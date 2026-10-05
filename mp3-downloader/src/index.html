@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MP3 Downloader</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Bộ icon Material (inline, hoạt động offline) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
+    <symbol id="i-paste" viewBox="0 0 24 24"><path d="M19 2h-4.18C14.4.84 13.3 0 12 0c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm7 18H5V4h2v3h10V4h2v16z"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></symbol>
+    <symbol id="i-done" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></symbol>
+    <symbol id="i-error" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></symbol>
+  </svg>
+
+  <div class="app">
+    <nav class="rail" aria-label="Điều hướng">
+      <button class="rail-item active" data-page="download" aria-current="page">
+        <span class="rail-indicator"><svg class="icon"><use href="#i-download"/></svg></span>
+        <span class="rail-label">Tải về</span>
+      </button>
+      <button class="rail-item" data-page="settings">
+        <span class="rail-indicator"><svg class="icon"><use href="#i-settings"/></svg></span>
+        <span class="rail-label">Cài đặt</span>
+      </button>
+    </nav>
+
+    <main class="main">
+      <!-- ───────── Trang tải về ───────── -->
+      <section class="page active" id="page-download">
+        <header class="page-head">
+          <h1>Tải nhạc MP3</h1>
+          <p class="body-medium muted">Dán link YouTube, TikTok hoặc Spotify. Ảnh bìa, nghệ sĩ và album được gắn sẵn vào tệp. Mặc định lưu trong thư mục Downloads.</p>
+        </header>
+
+        <div class="banner" id="tools-banner" hidden>
+          <div class="banner-text">
+            <strong id="banner-title">Cần cài thêm công cụ</strong>
+            <span id="banner-desc"></span>
+          </div>
+          <div class="banner-actions">
+            <button class="btn text" id="banner-dismiss" hidden>Để sau</button>
+            <button class="btn text" id="banner-install">Cài đặt tự động</button>
+          </div>
+          <div class="progress banner-progress" id="banner-progress" hidden><span></span></div>
+        </div>
+
+        <div class="field">
+          <input id="url-input" type="text" placeholder=" " autocomplete="off" spellcheck="false" />
+          <label for="url-input">Link bài hát (YouTube, TikTok, Spotify)</label>
+          <button class="icon-btn field-trailing" id="paste-btn" title="Dán từ bộ nhớ tạm" aria-label="Dán từ bộ nhớ tạm">
+            <svg class="icon"><use href="#i-paste"/></svg>
+          </button>
+        </div>
+
+        <div class="preview" id="preview" hidden></div>
+
+        <div class="controls">
+          <div class="chips" id="quality-chips" role="radiogroup" aria-label="Chất lượng MP3"></div>
+          <button class="btn filled" id="download-btn" disabled>
+            <svg class="icon"><use href="#i-download"/></svg>Tải MP3
+          </button>
+        </div>
+
+        <div class="queue-head">
+          <h2>Hàng đợi</h2>
+          <button class="btn text" id="clear-done" hidden>Xoá mục đã xong</button>
+        </div>
+        <div class="queue" id="queue">
+          <p class="empty body-medium muted" id="queue-empty">Chưa có bài nào. Dán link ở trên để bắt đầu.</p>
+        </div>
+      </section>
+
+      <!-- ───────── Trang cài đặt ───────── -->
+      <section class="page" id="page-settings">
+        <header class="page-head"><h1>Cài đặt</h1></header>
+
+        <div class="card">
+          <h2>Màu chủ đề</h2>
+          <p class="body-medium muted">Toàn bộ giao diện sẽ đổi theo màu bạn chọn.</p>
+          <div class="swatches" id="swatches"></div>
+          <div class="theme-row">
+            <div class="field small">
+              <input id="hex-input" type="text" placeholder=" " maxlength="7" spellcheck="false" />
+              <label for="hex-input">Mã màu (#RRGGBB)</label>
+            </div>
+          </div>
+          <div class="seg" id="mode-seg" role="radiogroup" aria-label="Chế độ sáng tối"></div>
+        </div>
+
+        <div class="card">
+          <h2>Chất lượng mặc định</h2>
+          <p class="body-medium muted">“Tốt nhất” lấy luồng âm thanh cao nhất và chuyển sang MP3 VBR chất lượng cao nhất (V0).</p>
+          <div class="chips" id="default-quality-chips" role="radiogroup" aria-label="Chất lượng mặc định"></div>
+        </div>
+
+        <div class="card">
+          <h2>Lưu tệp</h2>
+          <div class="row">
+            <div class="grow">
+              <div class="title-medium">Thư mục lưu nhạc</div>
+              <div class="body-medium muted path" id="out-dir"></div>
+            </div>
+            <button class="btn tonal" id="pick-dir"><svg class="icon"><use href="#i-folder"/></svg>Đổi</button>
+            <button class="btn text" id="open-dir">Mở</button>
+          </div>
+          <label class="row switch-row">
+            <div class="grow">
+              <div class="title-medium">Cắt ảnh bìa thành hình vuông</div>
+              <div class="body-medium muted">Ảnh thumbnail 16:9 của video sẽ được cắt giữa để vừa trình phát nhạc.</div>
+            </div>
+            <input type="checkbox" class="switch" id="crop-switch" />
+          </label>
+        </div>
+
+        <div class="card">
+          <h2>Công cụ</h2>
+          <p class="body-medium muted">App dùng yt-dlp để tải và ffmpeg để chuyển sang MP3, gắn ảnh bìa.</p>
+          <div class="row">
+            <div class="grow">
+              <div class="title-medium">yt-dlp</div>
+              <div class="body-medium muted" id="ytdlp-status">Đang kiểm tra…</div>
+            </div>
+            <button class="btn tonal" id="install-ytdlp">Cài đặt</button>
+          </div>
+          <div class="progress" id="ytdlp-progress" hidden><span></span></div>
+          <div class="row">
+            <div class="grow">
+              <div class="title-medium">ffmpeg</div>
+              <div class="body-medium muted" id="ffmpeg-status">Đang kiểm tra…</div>
+            </div>
+            <button class="btn tonal" id="install-ffmpeg">Cài đặt</button>
+          </div>
+          <div class="progress" id="ffmpeg-progress" hidden><span></span></div>
+          <div class="row">
+            <div class="grow">
+              <div class="title-medium">Deno <span class="tag opt">Khuyên dùng</span></div>
+              <div class="body-medium muted" id="deno-status">Đang kiểm tra…</div>
+            </div>
+            <button class="btn tonal" id="install-deno">Cài đặt</button>
+          </div>
+          <div class="progress" id="deno-progress" hidden><span></span></div>
+        </div>
+
+        <div class="card about">
+          <div class="about-head">
+            <img src="app-icon.png" alt="" class="about-icon" width="56" height="56" />
+            <div>
+              <h2>MP3 Downloader</h2>
+              <div class="body-medium muted" id="app-version">Phiên bản</div>
+            </div>
+          </div>
+          <div class="row"><div class="grow"><div class="body-small muted">Tác giả</div><div class="title-medium">minhtrong67</div></div></div>
+          <div class="row"><div class="grow"><div class="body-small muted">Hỗ trợ phát triển</div><div class="title-medium">Claude (Anthropic)</div></div></div>
+        </div>
+
+        <p class="body-small muted footnote">Chỉ tải nội dung bạn có quyền sử dụng. Spotify không cho tải trực tiếp, nên app lấy thông tin bài hát từ Spotify rồi tìm bản âm thanh tương ứng trên YouTube.</p>
+      </section>
+    </main>
+  </div>
+
+  <div class="snackbar" id="snackbar" role="status" aria-live="polite"><span id="snack-text"></span><button class="btn text" id="snack-action" hidden></button></div>
+
+  <script src="vendor/mcu.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

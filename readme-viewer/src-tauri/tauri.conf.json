@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Readme Viewer",
+  "version": "1.0.0",
+  "identifier": "com.minhtrong67.readmeviewer",
+  "build": { "frontendDist": "../src" },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      { "label": "main", "title": "Readme Viewer", "width": 1180, "height": 800, "minWidth": 480, "minHeight": 360, "center": true, "decorations": false, "shadow": true }
+    ],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "minhtrong67",
+    "copyright": "Copyright (c) 2026 minhtrong67",
+    "shortDescription": "Lightweight Markdown viewer",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
+    "fileAssociations": [
+      { "ext": ["md", "markdown", "mdown", "mkd"], "name": "Markdown Document", "description": "Markdown document", "role": "Viewer", "mimeType": "text/markdown" }
+    ],
+    "windows": { "nsis": { "installMode": "currentUser", "installerIcon": "icons/icon.ico", "uninstallerIcon": "icons/icon.ico" } }
+  }
+}

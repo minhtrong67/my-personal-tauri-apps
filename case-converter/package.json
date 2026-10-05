@@ -1,0 +1,10 @@
+{
+  "name": "case-converter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Case Converter: convert text between many letter cases, with handy text tools",
+  "author": "minhtrong67",
+  "license": "MIT",
+  "scripts": { "dev": "tauri dev", "build": "tauri build", "tauri": "tauri" },
+  "devDependencies": { "@tauri-apps/cli": "^2" }
+}

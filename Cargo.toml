@@ -1,0 +1,17 @@
+# Cargo workspace shared by every Tauri project in this folder.
+# All projects reuse ONE build cache: ./target
+# Any subfolder that contains src-tauri/Cargo.toml is picked up automatically.
+[workspace]
+resolver = "2"
+members = ["*/src-tauri"]
+
+# Profiles must live here (Cargo ignores them in member crates).
+[profile.dev]
+debug = 0
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

@@ -1,0 +1,18 @@
+[package]
+name = "case-converter"
+version = "1.0.0"
+description = "Case Converter"
+authors = ["minhtrong67"]
+license = "MIT"
+edition = "2021"
+
+[lib]
+name = "case_converter_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"

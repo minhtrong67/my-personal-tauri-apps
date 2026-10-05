@@ -1,0 +1,34 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Photo Viewer",
+  "version": "1.0.0",
+  "identifier": "com.minhtrong67.photoviewer",
+  "build": { "frontendDist": "../src" },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      { "label": "main", "title": "Photo Viewer", "width": 1280, "height": 820, "minWidth": 480, "minHeight": 420, "center": true }
+    ],
+    "security": { "csp": null, "assetProtocol": { "enable": true, "scope": ["**"] } }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "minhtrong67",
+    "copyright": "Copyright (c) 2026 minhtrong67",
+    "shortDescription": "View and edit your pictures",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
+    "fileAssociations": [
+      { "ext": ["png", "jpg", "jpeg", "jfif", "gif", "webp", "bmp", "ico", "avif"], "name": "Image", "description": "Picture", "role": "Viewer", "mimeType": "image/png" }
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico",
+        "headerImage": "installer/header.bmp",
+        "sidebarImage": "installer/sidebar.bmp"
+      }
+    }
+  }
+}

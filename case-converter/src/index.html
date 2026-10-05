@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Case Converter</title>
+<style>
+/* Fluent 2 / WinUI 3 tokens (Windows 11). light-dark() follows color-scheme. The accent is user customizable. */
+:root{color-scheme:light dark;--mica:light-dark(#f3f3f3,#202020);--surf:light-dark(#fff,#272727);--surf2:light-dark(#fafafa,#2c2c2c);--fg:light-dark(#1a1a1a,#fff);--fg2:light-dark(rgba(0,0,0,.62),rgba(255,255,255,.79));
+--line:light-dark(rgba(0,0,0,.09),rgba(255,255,255,.09));--stroke:light-dark(rgba(0,0,0,.06),rgba(255,255,255,.07));--strokeb:light-dark(rgba(0,0,0,.16),rgba(255,255,255,.1));
+--ctl:light-dark(#fff,rgba(255,255,255,.06));--ctlh:light-dark(#f9f9f9,rgba(255,255,255,.084));--hov:light-dark(rgba(0,0,0,.037),rgba(255,255,255,.061));--press:light-dark(rgba(0,0,0,.024),rgba(255,255,255,.042));
+--brand:light-dark(var(--bl,#005fb8),var(--bd,#60cdff));--onb:light-dark(var(--ol,#fff),var(--od,#000));--brandh:color-mix(in srgb,var(--brand) 88%,var(--surf));--sel:color-mix(in srgb,var(--brand) 12%,var(--surf));--r:4px}
+:root[data-theme="light"]{color-scheme:light}:root[data-theme="dark"]{color-scheme:dark}
+*{box-sizing:border-box}html,body{height:100%;margin:0}[hidden]{display:none!important}
+body{font:14px/20px "Segoe UI Variable Text","Segoe UI Variable","Segoe UI",system-ui,sans-serif;color:var(--fg);background:var(--mica);display:flex;flex-direction:column;height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased}
+svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round;flex:none}
+button,textarea,input{font:inherit;color:inherit}
+::-webkit-scrollbar{width:14px;height:14px}::-webkit-scrollbar-thumb{background:light-dark(rgba(0,0,0,.45),rgba(255,255,255,.5));border-radius:8px;border:5px solid transparent;background-clip:padding-box}::-webkit-scrollbar-thumb:hover{border-width:3px}::-webkit-scrollbar-corner{background:transparent}
+:focus-visible{outline:2px solid var(--fg);outline-offset:1px}.sp{flex:1}
+.title{display:flex;align-items:center;gap:8px;height:32px;flex:none;padding:0 0 0 16px;font-size:12px;min-width:0}.title b{font-weight:600}.lg{width:18px;height:18px;stroke:none}
+body.native .title{display:none}.wc{display:none;margin-left:auto;align-self:stretch}body.tw .wc{display:flex}
+.wc button{width:46px;border:0;background:transparent;color:var(--fg);font:10px "Segoe Fluent Icons","Segoe MDL2 Assets";cursor:default}.wc button:hover{background:var(--hov)}.wc #wClose:hover{background:#c42b1c;color:#fff}
+.title *{pointer-events:none}.title .wc,.title .wc *{pointer-events:auto}
+.bar{display:flex;align-items:center;gap:4px;flex:none;padding:4px 12px 8px}
+.tabs{display:flex;gap:4px}.tab{position:relative;height:32px;padding:0 12px;border:0;border-radius:var(--r);background:transparent;color:var(--fg2);cursor:pointer}
+.tab:hover{background:var(--hov)}.tab.on{color:var(--fg);font-weight:600}.tab.on::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:3px;border-radius:2px;background:var(--brand)}
+.btn{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border:1px solid var(--stroke);border-bottom-color:var(--strokeb);border-radius:var(--r);background:var(--ctl);color:var(--fg);cursor:pointer;white-space:nowrap;transition:background .1s}
+.btn:hover{background:var(--ctlh)}.btn:active{background:var(--press);color:var(--fg2);border-bottom-color:var(--stroke)}.btn:disabled{opacity:.4;pointer-events:none}
+.btn.pri,.btn.on{background:var(--brand);border-color:var(--brand);color:var(--onb)}.btn.pri{font-weight:600}.btn.pri:hover,.btn.on:hover{background:var(--brandh)}.btn.pri:active{background:color-mix(in srgb,var(--brand) 78%,var(--surf))}
+.btn.ic{width:32px;padding:0;justify-content:center;border-color:transparent;background:transparent}.btn.ic:hover{background:var(--hov)}.btn.ic:active{background:var(--press)}
+.content{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 12px 12px}
+.pane{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--surf);border:1px solid var(--stroke);border-radius:8px;padding:16px}
+.ph{display:flex;align-items:center;gap:4px;min-height:32px;margin-bottom:12px}.ph h2{margin:0;font-size:14px;line-height:20px;font-weight:600}
+.tx{flex:1;width:100%;min-height:120px;resize:none;border:1px solid var(--stroke);border-bottom-color:var(--strokeb);border-radius:var(--r);background:var(--ctl);padding:10px 12px;font:14px/22px "Segoe UI Variable Text","Segoe UI",sans-serif;outline:0}
+.tx:focus{background:var(--surf);border-bottom:2px solid var(--brand);padding-bottom:9px}.tx[readonly]{background:var(--surf2)}
+.stat{margin-top:8px;font-size:12px;line-height:16px;color:var(--fg2)}
+.gl{margin:14px 0 8px;font-size:12px;line-height:16px;font-weight:600;color:var(--fg2)}.gl:first-child{margin-top:0}.cg{display:flex;flex-wrap:wrap;gap:6px}
+.view{flex:none;margin-bottom:12px;overflow:auto;max-height:46%}
+.opt{display:flex;align-items:center;gap:12px;margin-top:14px;cursor:pointer;user-select:none}
+.sw{appearance:none;flex:none;width:40px;height:20px;border-radius:10px;border:1px solid var(--fg2);background:transparent;position:relative;margin:0;cursor:pointer;transition:.1s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:var(--fg2);transition:.1s}.sw:hover::after{width:14px;height:14px;top:2px}
+.sw:checked{background:var(--brand);border-color:var(--brand)}.sw:checked::after{left:22px;background:var(--onb)}.sw:checked:hover::after{left:21px}
+.list{flex:1;overflow:auto;margin:0 -8px;padding:0 8px}
+.row{display:flex;align-items:center;gap:12px;min-height:40px;padding:4px 4px 4px 12px;border-radius:var(--r);cursor:pointer}.row:hover{background:var(--hov)}.row:active{background:var(--press)}
+.rn{width:176px;flex:none;font-weight:600}.rv{flex:1;min-width:0;color:var(--fg2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.row .ic{color:var(--fg2)}
+.empty{padding:48px 16px;text-align:center;color:var(--fg2)}
+.seg{display:inline-flex;padding:2px;gap:2px;border-radius:6px;background:var(--hov)}.seg button{display:flex;align-items:center;gap:6px;height:28px;padding:0 14px;border:0;border-radius:4px;background:transparent;color:var(--fg2);cursor:pointer}
+.seg button:hover{color:var(--fg)}.seg button.on{background:var(--surf);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.14)}
+dialog{border:1px solid var(--stroke);border-radius:8px;background:var(--surf);color:var(--fg);padding:24px;width:min(460px,92vw);box-shadow:0 32px 64px rgba(0,0,0,.28)}dialog::backdrop{background:rgba(0,0,0,.3)}
+dialog h2{margin:0 0 4px;font-size:20px;line-height:28px;font-weight:600}dialog h3{margin:18px 0 8px;font-size:14px;font-weight:600}.da{display:flex;justify-content:flex-end;margin-top:20px}
+.swr{display:grid;grid-template-columns:repeat(10,1fr);gap:6px}.swc{aspect-ratio:1;min-width:0;border-radius:var(--r);border:2px solid transparent;display:grid;place-items:center;color:#fff;cursor:pointer;padding:0}.swc svg{display:none;stroke-width:2}.swc.on{border-color:var(--fg);box-shadow:inset 0 0 0 2px var(--surf)}.swc.on svg{display:block}
+.swc.cu{background:conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}.hex{margin-top:10px;font-size:12px;color:var(--fg2)}
+#sb{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);background:var(--surf);color:var(--fg);border:1px solid var(--stroke);padding:10px 16px;border-radius:var(--r);box-shadow:0 8px 16px rgba(0,0,0,.14);opacity:0;pointer-events:none;transition:.2s;z-index:50}#sb.on{opacity:1;transform:translateX(-50%)}
+@media(max-width:839px){.content{grid-template-columns:1fr;grid-auto-rows:minmax(320px,auto);overflow:auto}.rn{width:130px}}
+@media(max-width:480px){.rn{width:100px}.swr{grid-template-columns:repeat(7,1fr)}}
+</style></head><body>
+<header class="title" data-tauri-drag-region><svg class="lg" viewBox="0 0 32 32"><defs><linearGradient id="gp" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#8F6FD1"/><stop offset="1" stop-color="#5A3A9E"/></linearGradient></defs><rect x="11" y="3" width="17" height="22" rx="3.2" fill="url(#gp)" stroke="none"/><rect x="4" y="6" width="17" height="23" rx="3.2" fill="#fff" stroke="none"/><path d="M7 23l2.3-7.8L11.6 23M8.1 20.4h2.4" fill="none" stroke="#6B46C1" stroke-width="1.7"/><circle cx="16" cy="21.2" r="1.8" fill="none" stroke="#6B46C1" stroke-width="1.5"/><path d="M17.8 19.6V23" fill="none" stroke="#6B46C1" stroke-width="1.5"/></svg><b>Case Converter</b><div class="wc"><button id="wMin" tabindex="-1">&#xE921;</button><button id="wMax" tabindex="-1">&#xE922;</button><button id="wClose" tabindex="-1">&#xE8BB;</button></div></header>
+<div class="bar"><div class="tabs" role="tablist"><button class="tab" data-tab="convert" role="tab" data-i="tConvert"></button><button class="tab" data-tab="all" role="tab" data-i="tAll"></button><button class="tab" data-tab="tools" role="tab" data-i="tTools"></button></div><div class="sp"></div>
+<button class="btn ic" id="bSet" data-t="settings"><svg data-ic="settings"></svg></button><button class="btn ic" id="bAbout" data-t="about"><svg data-ic="info"></svg></button></div>
+<main class="content">
+<section class="pane"><div class="ph"><h2 data-i="source"></h2><div class="sp"></div>
+<button class="btn ic" id="bOpen" data-t="open"><svg data-ic="open"></svg></button><button class="btn ic" id="bPaste" data-t="paste"><svg data-ic="paste"></svg></button><button class="btn ic" id="bClear" data-t="clear"><svg data-ic="clear"></svg></button></div>
+<textarea class="tx" id="inp" spellcheck="false" data-t="inLabel"></textarea><div class="stat" id="stat"></div></section>
+<section class="pane"><div class="ph"><h2 id="oTitle"></h2><div class="sp"></div>
+<button class="btn pri" id="bCopy"><svg data-ic="copy"></svg><span data-i="copy"></span></button><button class="btn ic" id="bSwap" data-t="swap"><svg data-ic="swap"></svg></button><button class="btn ic" id="bSave" data-t="save"><svg data-ic="save"></svg></button></div>
+<div class="view" id="vConvert"><div id="chips"></div><label class="opt"><input class="sw" type="checkbox" id="smart"><span data-i="smart"></span></label></div>
+<div class="view" id="vTools" hidden><div class="cg" id="tools"></div></div>
+<div class="list" id="list" hidden></div>
+<textarea class="tx" id="out" readonly spellcheck="false"></textarea></section>
+</main>
+<dialog id="dSet"><h2 data-i="settings"></h2><div id="setBody"></div><div class="da"><button class="btn pri" data-close data-i="ok"></button></div></dialog>
+<dialog id="dAbout"><svg class="lg" viewBox="0 0 32 32"><defs><linearGradient id="gp" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#8F6FD1"/><stop offset="1" stop-color="#5A3A9E"/></linearGradient></defs><rect x="11" y="3" width="17" height="22" rx="3.2" fill="url(#gp)" stroke="none"/><rect x="4" y="6" width="17" height="23" rx="3.2" fill="#fff" stroke="none"/><path d="M7 23l2.3-7.8L11.6 23M8.1 20.4h2.4" fill="none" stroke="#6B46C1" stroke-width="1.7"/><circle cx="16" cy="21.2" r="1.8" fill="none" stroke="#6B46C1" stroke-width="1.5"/><path d="M17.8 19.6V23" fill="none" stroke="#6B46C1" stroke-width="1.5"/></svg><h2 style="margin-top:12px">Case Converter</h2><div style="color:var(--fg2)"><span data-i="version"></span> 1.0.0</div><p style="margin:16px 0 4px"><span data-i="author"></span> <b>minhtrong67</b></p><p style="margin:0;color:var(--fg2)" data-i="credit"></p><div class="da"><button class="btn pri" data-close data-i="ok"></button></div></dialog>
+<div id="sb"></div><input type="file" id="file" accept=".txt,.md,.csv,.log,.json,text/*" hidden><input type="color" id="cc" hidden>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],TA=window.__TAURI__;
+const ls=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch{}};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const IC={copy:'M5 5V3.5A1.5 1.5 0 0 1 6.5 2h6A1.5 1.5 0 0 1 14 3.5v6a1.5 1.5 0 0 1-1.5 1.5H11M2 6.5A1.5 1.5 0 0 1 3.5 5h6A1.5 1.5 0 0 1 11 6.5v6A1.5 1.5 0 0 1 9.5 14h-6A1.5 1.5 0 0 1 2 12.5z',open:'M2 4.5A1.5 1.5 0 0 1 3.5 3h3L8 4.5h4.5A1.5 1.5 0 0 1 14 6v6a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12z',
+ paste:'M6 2.5h4v2H6zM10 3.5h1.2a1.3 1.3 0 0 1 1.3 1.3V13a1.3 1.3 0 0 1-1.3 1.3H4.8A1.3 1.3 0 0 1 3.5 13V4.8a1.3 1.3 0 0 1 1.3-1.3H6',clear:'M3.5 4.5h9M6.5 4.5V3h3v1.5M5 4.5l.5 8.5h5l.5-8.5M7 7v4M9 7v4',swap:'M3 5.5h9.5L10 3M13 10.5H3.5L6 13',save:'M8 2v8m0 0L5 7m3 3 3-3M3 13h10',
+ settings:'M2.5 5h6M11.5 5h2M2.5 11h2M7.5 11h6M10 3v4M6 9v4',info:'M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zM8 7.2V11M8 5v.1',check:'M3.5 8.5l3 3 6-6.5'};
+const ico=n=>`<svg viewBox="0 0 16 16"><path d="${IC[n]}"/></svg>`;
+$$('[data-ic]').forEach(e=>{e.setAttribute('viewBox','0 0 16 16');e.innerHTML=`<path d="${IC[e.dataset.ic]}"/>`});
+/* ---------- conversion engine ---------- */
+const WRE=/\p{Lu}+(?=\p{Lu}\p{Ll})|\p{Lu}?\p{Ll}+|\p{Lu}+|\p{N}+|\p{Lo}+/gu;
+const words=s=>s.normalize('NFC').match(WRE)||[];
+const lines=s=>s.split(/\r?\n/),perLine=f=>s=>lines(s).map(f).join('\n'),ident=j=>perLine(l=>j(words(l)));
+const up=w=>w.toUpperCase(),low=w=>w.toLowerCase(),cap=w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase();
+const deburr=s=>s.normalize('NFD').replace(/\p{M}/gu,'').replace(/đ/g,'d').replace(/Đ/g,'D');
+const SMALL=new Set('a an and as at but by for if in nor of on or per so the to up via vs yet'.split(' '));
+function title(l,smart){const ms=[...l.matchAll(/[\p{L}\p{N}][\p{L}\p{N}\p{M}'’]*/gu)];let o='',last=0;
+ ms.forEach((m,i)=>{const lw=m[0].toLowerCase(),keep=smart&&i>0&&i<ms.length-1&&SMALL.has(lw);o+=l.slice(last,m.index)+(keep?lw:lw.charAt(0).toUpperCase()+lw.slice(1));last=m.index+m[0].length});return o+l.slice(last)}
+const sentence=s=>s.toLowerCase().replace(/(^|[.!?…]\s+|\n\s*)(\p{L})/gu,(m,a,b)=>a+b.toUpperCase());
+const capw=s=>s.replace(/(^|[^\p{L}\p{N}'’])(\p{L})/gu,(m,a,b)=>a+b.toUpperCase());
+const isL=c=>c.toLowerCase()!==c.toUpperCase();
+const alt=s=>{let n=0;return [...s].map(c=>isL(c)?(n++%2?c.toLowerCase():c.toUpperCase()):c).join('')};
+const inv=s=>[...s].map(c=>!isL(c)?c:c===c.toUpperCase()?c.toLowerCase():c.toUpperCase()).join('');
+const rev=s=>[...s.normalize('NFC')].reverse().join('');
+let lang=ls('lang')||(/^vi/i.test(navigator.language)?'vi':'en'),theme=ls('theme')||'system',accent=ls('accent')||'#0078D4';
+const st={tab:ls('tab')||'convert',cse:ls('cse')||'camel',tool:ls('tool')||'dedupe',smart:ls('smart')!=='0'};
+const CASES=[
+ {id:'upper',g:'text',n:['UPPERCASE'],f:up},{id:'lower',g:'text',n:['lowercase'],f:low},
+ {id:'title',g:'text',n:['Title Case'],f:s=>perLine(l=>title(l,st.smart))(s)},{id:'sentence',g:'text',n:['Sentence case'],f:sentence},
+ {id:'cap',g:'text',n:['Capitalize Each Word'],f:capw},{id:'alt',g:'text',n:['aLtErNaTiNg'],f:alt},{id:'inv',g:'text',n:['tOGGLE cASE'],f:inv},{id:'rev',g:'text',n:['Reverse text','Đảo ngược văn bản'],f:rev},
+ {id:'camel',g:'code',n:['camelCase'],f:ident(w=>w.map((x,i)=>i?cap(x):low(x)).join(''))},{id:'pascal',g:'code',n:['PascalCase'],f:ident(w=>w.map(cap).join(''))},
+ {id:'snake',g:'code',n:['snake_case'],f:ident(w=>w.map(low).join('_'))},{id:'constant',g:'code',n:['CONSTANT_CASE'],f:ident(w=>w.map(up).join('_'))},
+ {id:'kebab',g:'code',n:['kebab-case'],f:ident(w=>w.map(low).join('-'))},{id:'train',g:'code',n:['Train-Case'],f:ident(w=>w.map(cap).join('-'))},
+ {id:'cobol',g:'code',n:['COBOL-CASE'],f:ident(w=>w.map(up).join('-'))},{id:'dot',g:'code',n:['dot.case'],f:ident(w=>w.map(low).join('.'))},{id:'path',g:'code',n:['path/case'],f:ident(w=>w.map(low).join('/'))},
+ {id:'slug',g:'other',n:['URL slug','Slug cho URL'],f:perLine(l=>words(deburr(l)).map(low).join('-'))},{id:'plain',g:'other',n:['Remove diacritics','Bỏ dấu tiếng Việt'],f:deburr}];
+const natural=(a,b)=>a.localeCompare(b,lang=='vi'?'vi':undefined,{numeric:true,sensitivity:'base'});
+const TOOLS=[
+ {id:'dedupe',n:['Remove duplicate lines','Xóa dòng trùng'],f:s=>[...new Set(lines(s))].join('\n')},{id:'sortaz',n:['Sort A to Z','Sắp xếp A đến Z'],f:s=>lines(s).sort(natural).join('\n')},
+ {id:'sortza',n:['Sort Z to A','Sắp xếp Z đến A'],f:s=>lines(s).sort((a,b)=>natural(b,a)).join('\n')},{id:'revl',n:['Reverse line order','Đảo thứ tự dòng'],f:s=>lines(s).reverse().join('\n')},
+ {id:'empty',n:['Remove empty lines','Xóa dòng trống'],f:s=>lines(s).filter(l=>l.trim()).join('\n')},{id:'trim',n:['Trim each line','Cắt khoảng trắng đầu cuối dòng'],f:perLine(l=>l.trim())},
+ {id:'spaces',n:['Collapse extra spaces','Gộp khoảng trắng thừa'],f:perLine(l=>l.replace(/[ \t]+/g,' '))},{id:'join',n:['Join lines into one','Nối các dòng thành một'],f:s=>lines(s).map(l=>l.trim()).filter(Boolean).join(' ')},
+ {id:'num',n:['Number the lines','Đánh số dòng'],f:s=>lines(s).map((l,i)=>`${i+1}. ${l}`).join('\n')}];
+const nm=x=>(lang=='vi'&&x.n[1])||x.n[0];
+/* ---------- i18n ---------- */
+const T={vi:{settings:'Cài đặt',about:'Thông tin ứng dụng',tConvert:'Chuyển đổi',tAll:'Tất cả kiểu',tTools:'Công cụ',source:'Văn bản gốc',inLabel:'Nhập hoặc dán văn bản',result:'Kết quả',allTitle:'Tất cả kiểu chuyển đổi',toolsTitle:'Công cụ văn bản',
+ open:'Mở tệp văn bản',paste:'Dán từ clipboard',clear:'Xóa văn bản (Ctrl+Shift+X)',swap:'Dùng kết quả làm văn bản gốc',save:'Lưu kết quả ra tệp .txt',copy:'Sao chép',copied:'Đã sao chép',copyFail:'Không sao chép được',saved:'Đã lưu tệp',swapped:'Đã chuyển kết quả sang văn bản gốc',pasteFail:'Không dán được. Hãy dùng Ctrl+V',readFail:'Không đọc được tệp',
+ gText:'Văn bản',gCode:'Lập trình',gOther:'Khác',smart:'Title Case thông minh (giữ a, an, the…)',emptyAll:'Nhập văn bản để xem tất cả kết quả',chars:'ký tự',wordsU:'từ',linesU:'dòng',sTheme:'Giao diện',system:'Hệ thống',light:'Sáng',dark:'Tối',sLang:'Ngôn ngữ',sColor:'Màu chủ đề',custom:'Màu tùy chỉnh',
+ version:'Phiên bản',author:'Tác giả:',credit:'Được xây dựng với sự hỗ trợ của Claude (Anthropic)',ok:'Xong'},
+ en:{settings:'Settings',about:'About',tConvert:'Convert',tAll:'All cases',tTools:'Tools',source:'Source text',inLabel:'Type or paste text',result:'Result',allTitle:'All conversions',toolsTitle:'Text tools',
+ open:'Open text file',paste:'Paste from clipboard',clear:'Clear text (Ctrl+Shift+X)',swap:'Use result as source text',save:'Save result as .txt file',copy:'Copy',copied:'Copied',copyFail:'Could not copy',saved:'File saved',swapped:'Result moved to source text',pasteFail:'Could not paste. Use Ctrl+V',readFail:'Could not read the file',
+ gText:'Text',gCode:'Code',gOther:'Other',smart:'Smart Title Case (keep a, an, the…)',emptyAll:'Type some text to see every result',chars:'characters',wordsU:'words',linesU:'lines',sTheme:'Theme',system:'System',light:'Light',dark:'Dark',sLang:'Language',sColor:'Accent color',custom:'Custom color',
+ version:'Version',author:'Author:',credit:'Built with the assistance of Claude (Anthropic)',ok:'Done'}};
+const t=k=>T[lang][k]||k;
+/* ---------- theme + customizable accent color ---------- */
+const PALETTE=['#0078D4','#0063B1','#8E8CD8','#6B69D6','#8764B8','#744DA9','#B146C2','#881798','#0099BC','#00B7C3','#038387','#00B294','#10893E','#498205','#FFB900','#F7630C','#DA3B01','#E81123','#EA005E','#E3008C'];
+const rgb=h=>{h=h.replace('#','');return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16))};
+const lum=([r,g,b])=>{const f=c=>{c/=255;return c<=.03928?c/12.92:Math.pow((c+.055)/1.055,2.4)};return .2126*f(r)+.7152*f(g)+.0722*f(b)};
+const contrast=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+function toHsl([r,g,b]){r/=255;g/=255;b/=255;const M=Math.max(r,g,b),m=Math.min(r,g,b);let h=0,s=0;const l=(M+m)/2;
+ if(M!=m){const d=M-m;s=l>.5?d/(2-M-m):d/(M+m);h=M==r?(g-b)/d+(g<b?6:0):M==g?(b-r)/d+2:(r-g)/d+4;h*=60}return [h,s,l]}
+function fromHsl(h,s,l){const a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1))))};return [f(0),f(8),f(4)]}
+const hex=([r,g,b])=>'#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+function accentVars(h0){const [h,s0,l0]=toHsl(rgb(h0)),s=Math.min(s0,.95);
+ let l=Math.min(l0,.5),c=fromHsl(h,s,l);while(contrast(c,[255,255,255])<4.6&&l>.06){l-=.02;c=fromHsl(h,s,l)}           // light theme: darker fill, white text
+ let L=Math.max(l0,.58),d=fromHsl(h,s,L);while(contrast(d,[0,0,0])<8&&L<.92){L+=.02;d=fromHsl(h,s,L)}                // dark theme: lighter fill, black text
+ return {'--bl':hex(c),'--bd':hex(d),'--ol':'#fff','--od':'#000'}}
+function paint(){const r=document.documentElement;if(theme=='system')r.removeAttribute('data-theme');else r.dataset.theme=theme;
+ const v=accentVars(accent);for(const k in v)r.style.setProperty(k,v[k]);
+ try{TA&&TA.window.getCurrentWindow().setTheme(theme=='system'?null:theme)}catch{}}
+/* ---------- UI ---------- */
+let out='',tt;
+function toast(m){const e=$('#sb');e.textContent=m;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),2200)}
+async function copyText(x){let ok=true;try{await navigator.clipboard.writeText(x)}catch{ok=false;const a=document.createElement('textarea');a.value=x;document.body.append(a);a.select();try{ok=document.execCommand('copy')}catch{}a.remove()}toast(t(ok?'copied':'copyFail'))}
+function stats(s){const w=s.trim()?s.trim().split(/\s+/).length:0;$('#stat').textContent=`${[...s].length.toLocaleString()} ${t('chars')}  ·  ${w.toLocaleString()} ${t('wordsU')}  ·  ${s?lines(s).length:0} ${t('linesU')}`}
+function chips(){const G={text:t('gText'),code:t('gCode'),other:t('gOther')};
+ $('#chips').innerHTML=['text','code','other'].map(g=>`<div class="gl">${esc(G[g])}</div><div class="cg">`+CASES.filter(c=>c.g==g).map(c=>`<button class="btn${c.id==st.cse?' on':''}" data-c="${c.id}">${esc(nm(c))}</button>`).join('')+'</div>').join('');
+ $('#tools').innerHTML=TOOLS.map(x=>`<button class="btn${x.id==st.tool?' on':''}" data-tool="${x.id}">${esc(nm(x))}</button>`).join('')}
+function renderAll(s){const el=$('#list');if(!s){el.innerHTML=`<div class="empty">${esc(t('emptyAll'))}</div>`;return}
+ const G={text:t('gText'),code:t('gCode'),other:t('gOther')};
+ el.innerHTML=['text','code','other'].map(g=>`<div class="gl">${esc(G[g])}</div>`+CASES.filter(c=>c.g==g).map(c=>{const r=c.f(s),p=r.split(/\r?\n/)[0];
+  return `<div class="row" data-c="${c.id}"><div class="rn">${esc(nm(c))}</div><div class="rv" title="${esc(p)}">${esc(p.length>140?p.slice(0,140)+'…':p)}${r.includes('\n')?' …':''}</div><span class="btn ic">${ico('copy')}</span></div>`}).join('')).join('')}
+function update(){const s=$('#inp').value;stats(s);ls('draft',s);
+ if(st.tab=='all'){out='';renderAll(s)}else if(st.tab=='tools'){const x=TOOLS.find(y=>y.id==st.tool);out=x?x.f(s):'';$('#out').value=out}
+ else{out=CASES.find(c=>c.id==st.cse).f(s);$('#out').value=out}
+ $('#bCopy').disabled=$('#bSwap').disabled=$('#bSave').disabled=!out}
+function setTab(k){st.tab=k;ls('tab',k);$$('.tab').forEach(b=>{const on=b.dataset.tab==k;b.classList.toggle('on',on);b.setAttribute('aria-selected',on)});
+ $('#vConvert').hidden=k!='convert';$('#vTools').hidden=k!='tools';$('#list').hidden=k!='all';$('#out').hidden=k=='all';
+ $('#oTitle').textContent=t(k=='all'?'allTitle':k=='tools'?'toolsTitle':'result');update()}
+function applyI18n(){document.documentElement.lang=lang;$$('[data-i]').forEach(e=>e.textContent=t(e.dataset.i));
+ $$('[data-t]').forEach(e=>{e.title=t(e.dataset.t);if(e.tagName=='TEXTAREA')e.placeholder=t(e.dataset.t)});chips();setTab(st.tab);if($('#dSet').open)setBody()}
+function setBody(){const seg=(a,l,c)=>`<div class="seg">${l.map(([v,n])=>`<button ${a}="${v}" class="${v==c?'on':''}">${esc(n)}</button>`).join('')}</div>`;
+ const cu=!PALETTE.some(p=>p.toLowerCase()==accent.toLowerCase());
+ $('#setBody').innerHTML=`<h3>${esc(t('sTheme'))}</h3>${seg('data-th',[['system',t('system')],['light',t('light')],['dark',t('dark')]],theme)}<h3>${esc(t('sLang'))}</h3>${seg('data-lg',[['vi','Tiếng Việt'],['en','English']],lang)}
+ <h3>${esc(t('sColor'))}</h3><div class="swr">${PALETTE.map(p=>`<button class="swc${p.toLowerCase()==accent.toLowerCase()?' on':''}" data-a="${p}" title="${p}" style="background:${p}">${ico('check')}</button>`).join('')}</div>
+ <div class="swr" style="margin-top:6px;grid-template-columns:40px 1fr"><button class="swc cu${cu?' on':''}" data-custom title="${esc(t('custom'))}">${ico('check')}</button><div class="hex" style="margin:0;align-self:center">${esc(t('custom'))}: ${esc(accent.toUpperCase())}</div></div>`}
+/* ---------- events ---------- */
+$('#inp').oninput=update;
+$('#chips').onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;st.cse=b.dataset.c;ls('cse',st.cse);$$('#chips .btn').forEach(x=>x.classList.toggle('on',x==b));update()};
+$('#tools').onclick=e=>{const b=e.target.closest('[data-tool]');if(!b)return;st.tool=b.dataset.tool;ls('tool',st.tool);$$('#tools .btn').forEach(x=>x.classList.toggle('on',x==b));update()};
+$('#list').onclick=e=>{const r=e.target.closest('.row');if(r)copyText(CASES.find(c=>c.id==r.dataset.c).f($('#inp').value))};
+$('#smart').checked=st.smart;$('#smart').onchange=e=>{st.smart=e.target.checked;ls('smart',st.smart?'1':'0');update()};
+$$('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+$('#bCopy').onclick=()=>out&&copyText(out);
+function clearAll(){$('#inp').value='';update();$('#inp').focus()}
+$('#bClear').onclick=clearAll;
+$('#bSwap').onclick=()=>{if(!out)return;$('#inp').value=out;update();toast(t('swapped'))};
+$('#bPaste').onclick=async()=>{try{const x=await navigator.clipboard.readText();$('#inp').value=x;update();$('#inp').focus()}catch{toast(t('pasteFail'))}};
+$('#bSave').onclick=async()=>{if(!out)return;if(TA){try{if(await TA.core.invoke('save_text',{name:'result.txt',text:out}))toast(t('saved'))}catch{toast(t('copyFail'))}}
+ else{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'text/plain'}));a.download='result.txt';a.click();toast(t('saved'))}};
+function setInput(x){$('#inp').value=x;update()}
+async function readPath(p){try{setInput(await TA.core.invoke('read_text',{path:p}))}catch{toast(t('readFail'))}}
+$('#bOpen').onclick=async()=>{if(TA){try{const p=await TA.dialog.open({multiple:false,filters:[{name:'Text',extensions:['txt','md','csv','log','json']}]});if(p)readPath(p)}catch{toast(t('readFail'))}}else $('#file').click()};
+$('#file').onchange=e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=()=>setInput(String(r.result));r.readAsText(f)}e.target.value=''};
+$('#bSet').onclick=()=>{setBody();$('#dSet').showModal()};$('#bAbout').onclick=()=>$('#dAbout').showModal();
+$$('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+$('#setBody').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.th){theme=b.dataset.th;ls('theme',theme);paint()}else if(b.dataset.lg){lang=b.dataset.lg;ls('lang',lang);applyI18n()}
+ else if(b.dataset.a){accent=b.dataset.a;ls('accent',accent);paint()}else if('custom' in b.dataset){$('#cc').value=accent.toLowerCase();$('#cc').click();return}setBody()};
+$('#cc').oninput=e=>{accent=e.target.value;ls('accent',accent);paint();setBody()};
+document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();
+ if(e.ctrlKey&&e.shiftKey&&k=='c'){e.preventDefault();out&&copyText(out)}else if(e.ctrlKey&&e.shiftKey&&k=='x'){e.preventDefault();clearAll()}
+ else if(e.altKey&&'123'.includes(e.key)&&e.key.length==1){e.preventDefault();setTab(['convert','all','tools'][+e.key-1])}});
+if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{});
+if(TA){document.body.classList.add('tw');
+ TA.event.listen('tauri://drag-drop',e=>{const p=e.payload&&e.payload.paths&&e.payload.paths[0];if(p)readPath(p)});
+ const W=TA.window.getCurrentWindow();
+ W.isDecorated().then(d=>{if(d)document.body.classList.add('native')}).catch(()=>{});
+ $('#wMin').onclick=()=>W.minimize();$('#wMax').onclick=()=>W.toggleMaximize();$('#wClose').onclick=()=>W.close();
+ const sync=()=>W.isMaximized().then(m=>{$('#wMax').textContent=m?'\uE923':'\uE922'}).catch(()=>{});W.onResized(sync);sync()}
+$('#inp').value=ls('draft')||'';paint();applyI18n();
+</script></body></html>

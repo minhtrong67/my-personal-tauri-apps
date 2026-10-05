@@ -1,0 +1,21 @@
+[package]
+name = "csv-viewer"
+version = "1.0.0"
+description = "CSV Viewer"
+authors = ["minhtrong67"]
+license = "MIT"
+edition = "2021"
+
+[lib]
+name = "csv_viewer_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+base64 = "0.22"

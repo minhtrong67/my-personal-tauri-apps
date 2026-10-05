@@ -1,0 +1,10 @@
+{
+  "name": "csv-viewer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CSV Viewer: a lightweight desktop app for viewing, filtering and exporting CSV files",
+  "author": "minhtrong67",
+  "license": "MIT",
+  "scripts": { "dev": "tauri dev", "build": "tauri build", "tauri": "tauri" },
+  "devDependencies": { "@tauri-apps/cli": "^2" }
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Lumina",
+  "version": "1.0.0",
+  "identifier": "com.minhtrong67.lumina",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Lumina",
+        "width": 1280,
+        "height": 780,
+        "minWidth": 800,
+        "minHeight": 500,
+        "decorations": false,
+        "shadow": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data: blob:; media-src 'self' asset: http://asset.localhost blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost asset: http://asset.localhost",
+      "assetProtocol": { "enable": true, "scope": ["**"] }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png", "icons/icon.ico"],
+    "shortDescription": "Material Design 3 video player",
+    "longDescription": "Lumina is a full-featured video player for Windows with a Material Design 3 interface.",
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/installer.ico",
+        "uninstallerIcon": "icons/installer.ico"
+      }
+    },
+    "fileAssociations": [
+      {
+        "ext": ["mp4", "m4v", "mkv", "webm", "mov", "ogv"],
+        "name": "Video file",
+        "description": "Video file",
+        "role": "Viewer"
+      }
+    ]
+  }
+}

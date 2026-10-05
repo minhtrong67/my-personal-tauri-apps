@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --md-primary: 103 80 164;
+  --md-on-primary: 255 255 255;
+  --md-primary-container: 234 221 255;
+  --md-on-primary-container: 33 0 93;
+  --md-secondary: 98 91 113;
+  --md-on-secondary: 255 255 255;
+  --md-secondary-container: 232 222 248;
+  --md-on-secondary-container: 29 25 43;
+  --md-tertiary: 125 82 96;
+  --md-on-tertiary: 255 255 255;
+  --md-tertiary-container: 255 216 228;
+  --md-on-tertiary-container: 49 17 29;
+  --md-error: 179 38 30;
+  --md-on-error: 255 255 255;
+  --md-error-container: 249 222 220;
+  --md-on-error-container: 65 14 11;
+  --md-surface: 254 247 255;
+  --md-surface-dim: 222 216 225;
+  --md-surface-bright: 254 247 255;
+  --md-surface-variant: 231 224 236;
+  --md-surface-container-lowest: 255 255 255;
+  --md-surface-container-low: 247 242 250;
+  --md-surface-container: 243 237 247;
+  --md-surface-container-high: 236 230 240;
+  --md-surface-container-highest: 230 224 233;
+  --md-on-surface: 29 27 32;
+  --md-on-surface-variant: 73 69 79;
+  --md-outline: 121 116 126;
+  --md-outline-variant: 202 196 208;
+  --md-inverse-surface: 50 47 53;
+  --md-inverse-on-surface: 245 239 247;
+  --md-inverse-primary: 208 188 255;
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  background: rgb(var(--md-surface));
+  color: rgb(var(--md-on-surface));
+  font-family: Roboto, 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+}
+img { -webkit-user-drag: none; }
+input, textarea { user-select: text; -webkit-user-select: text; }
+
+.msr {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  flex-shrink: 0;
+}
+
+/* Thanh cuộn */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--md-outline-variant));
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--md-outline)); background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Slider Material 3 */
+.m3-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 20px;
+  background: transparent;
+  cursor: pointer;
+  --pct: 0%;
+  outline: none;
+}
+.m3-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, rgb(var(--md-primary)) var(--pct), rgb(var(--md-secondary-container)) var(--pct));
+}
+.m3-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: rgb(var(--md-primary));
+  box-shadow: 0 0 0 0 rgb(var(--md-primary) / 0.16);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.m3-slider:hover::-webkit-slider-thumb,
+.m3-slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 8px rgb(var(--md-primary) / 0.16); }
+.m3-slider:active::-webkit-slider-thumb { transform: scale(1.15); }
+
+.eq-bar { transform-origin: bottom; animation: eq 0.9s ease-in-out infinite; }
+
+.focus-ring:focus-visible { outline: 2px solid rgb(var(--md-primary)); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
