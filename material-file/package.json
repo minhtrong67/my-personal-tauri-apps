@@ -1,0 +1,16 @@
+{
+  "name": "material-file",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Material File - a simple, fast file manager with Material Design 3, built with Tauri.",
+  "author": "minhtrong67",
+  "license": "MIT",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

@@ -21,7 +21,12 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; style-src-elem 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; connect-src ipc: http://ipc.localhost",
+      "dangerousDisableAssetCspModification": [
+        "style-src",
+        "style-src-elem",
+        "style-src-attr"
+      ]
     }
   },
   "bundle": {
@@ -29,7 +34,7 @@
     "targets": "all",
     "publisher": "minhtrong67",
     "copyright": "Copyright © 2026 minhtrong67",
-    "category": "Office",
+    "category": "Productivity",
     "shortDescription": "A simple Material 3 word processor",
     "longDescription": "Material Docx is a lightweight, Material Design 3 word processor with .docx import/export, light/dark/system themes, custom accent colors, and English/Vietnamese UI.",
     "icon": [
@@ -44,7 +49,10 @@
         "installerIcon": "icons/installer.ico",
         "sidebarImage": "icons/nsis-sidebar.bmp",
         "headerImage": "icons/nsis-header.bmp",
-        "languages": ["English", "Vietnamese"],
+        "languages": [
+          "English",
+          "Vietnamese"
+        ],
         "displayLanguageSelector": true,
         "installMode": "currentUser"
       }
