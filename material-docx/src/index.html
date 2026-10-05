@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#fef7ff" />
+  <title>Material Docx</title>
+  <link rel="stylesheet" href="style.css" />
+  <style id="page-style"></style>
+</head>
+<body>
+  <!-- Icon sprite (24×24, stroked) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-new" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M12 12v6M9 15h6"/></symbol>
+    <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM7 3v5h8V3M7 21v-7h10v7"/></symbol>
+    <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v7H7z"/></symbol>
+    <symbol id="i-tune" viewBox="0 0 24 24"><path d="M4 7h8M20 7h-4M4 17h4M20 17H12"/><circle cx="14" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"/></symbol>
+    <symbol id="i-alignl" viewBox="0 0 24 24"><path d="M4 6h16M4 10h10M4 14h16M4 18h10"/></symbol>
+    <symbol id="i-alignc" viewBox="0 0 24 24"><path d="M4 6h16M7 10h10M4 14h16M7 18h10"/></symbol>
+    <symbol id="i-alignr" viewBox="0 0 24 24"><path d="M4 6h16M10 10h10M4 14h16M10 18h10"/></symbol>
+    <symbol id="i-alignj" viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></symbol>
+    <symbol id="i-ul" viewBox="0 0 24 24"><path d="M10 7h10M10 12h10M10 17h10"/><circle cx="5" cy="7" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="17" r="1"/></symbol>
+    <symbol id="i-ol" viewBox="0 0 24 24"><path d="M10 7h10M10 12h10M10 17h10M4 5.5l1.5-1v5M4 13.5h2.5l-2.5 3.5h2.5"/></symbol>
+    <symbol id="i-indent" viewBox="0 0 24 24"><path d="M4 6h16M12 10h8M12 14h8M4 18h16M4 9l3 3-3 3"/></symbol>
+    <symbol id="i-outdent" viewBox="0 0 24 24"><path d="M4 6h16M12 10h8M12 14h8M4 18h16M7 9l-3 3 3 3"/></symbol>
+    <symbol id="i-lineh" viewBox="0 0 24 24"><path d="M11 6h9M11 12h9M11 18h9M5 5v14M3 7l2-2 2 2M3 17l2 2 2-2"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-9 9"/></symbol>
+    <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16M15 4v16"/></symbol>
+    <symbol id="i-hr" viewBox="0 0 24 24"><path d="M3 12h18M7 6h10M7 18h10"/></symbol>
+    <symbol id="i-clear" viewBox="0 0 24 24"><path d="M4 7V4h12v3M10 4v10M14 20l6-6M20 20l-6-6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></symbol>
+    <symbol id="i-auto" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></symbol>
+  </svg>
+
+  <div id="app">
+    <!-- Top app bar -->
+    <header class="top-bar">
+      <button class="icon-btn" id="btn-file" data-i18n-title="menu.file" aria-haspopup="menu"><svg class="i"><use href="#i-menu"/></svg></button>
+      <div class="doc-title">
+        <input id="doc-name" type="text" spellcheck="false" maxlength="120" data-i18n-ph="doc.untitled" aria-label="Document name" />
+        <span id="dirty-dot" class="dirty-dot" hidden></span>
+      </div>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="btn-find" data-i18n-title="tip.find"><svg class="i"><use href="#i-search"/></svg></button>
+      <button class="icon-btn" id="btn-theme" data-i18n-title="tip.theme"><svg class="i"><use id="theme-use" href="#i-auto"/></svg></button>
+      <button class="icon-btn" id="btn-settings" data-i18n-title="tip.settings"><svg class="i"><use href="#i-tune"/></svg></button>
+    </header>
+
+    <!-- File menu -->
+    <div class="menu" id="file-menu" role="menu" hidden>
+      <button class="menu-item" role="menuitem" data-act="new"><svg class="i"><use href="#i-new"/></svg><span data-i18n="file.new"></span><kbd>Ctrl+N</kbd></button>
+      <button class="menu-item" role="menuitem" data-act="open"><svg class="i"><use href="#i-open"/></svg><span data-i18n="file.open"></span><kbd>Ctrl+O</kbd></button>
+      <div class="menu-sep"></div>
+      <button class="menu-item" role="menuitem" data-act="save"><svg class="i"><use href="#i-save"/></svg><span data-i18n="file.save"></span><kbd>Ctrl+S</kbd></button>
+      <button class="menu-item" role="menuitem" data-act="saveas"><svg class="i"><use href="#i-save"/></svg><span data-i18n="file.saveAs"></span><kbd>Ctrl+Shift+S</kbd></button>
+      <div class="menu-sep"></div>
+      <button class="menu-item" role="menuitem" data-act="print"><svg class="i"><use href="#i-print"/></svg><span data-i18n="file.print"></span><kbd>Ctrl+P</kbd></button>
+      <div class="menu-sep"></div>
+      <button class="menu-item" role="menuitem" data-act="exit"><svg class="i"><use href="#i-close"/></svg><span data-i18n="file.exit"></span></button>
+    </div>
+
+    <!-- Formatting toolbar -->
+    <div class="toolbar" id="toolbar" role="toolbar">
+      <div class="tb-group">
+        <button class="icon-btn" data-cmd="undo" data-i18n-title="tip.undo"><svg class="i"><use href="#i-undo"/></svg></button>
+        <button class="icon-btn" data-cmd="redo" data-i18n-title="tip.redo"><svg class="i"><use href="#i-redo"/></svg></button>
+      </div>
+      <div class="tb-group">
+        <select id="sel-style" data-i18n-title="tip.style" class="select style-select">
+          <option value="p" data-i18n="style.p"></option>
+          <option value="h1" data-i18n="style.h1"></option>
+          <option value="h2" data-i18n="style.h2"></option>
+          <option value="h3" data-i18n="style.h3"></option>
+          <option value="blockquote" data-i18n="style.quote"></option>
+        </select>
+        <select id="sel-font" data-i18n-title="tip.fontFamily" class="select font-select"></select>
+        <div class="size-box">
+          <button class="icon-btn sm" id="size-dec" data-i18n-title="tip.fontSize"><svg class="i"><use href="#i-minus"/></svg></button>
+          <input id="inp-size" type="text" inputmode="decimal" value="11" aria-label="Font size" />
+          <button class="icon-btn sm" id="size-inc" data-i18n-title="tip.fontSize"><svg class="i"><use href="#i-plus"/></svg></button>
+        </div>
+      </div>
+      <div class="tb-group">
+        <button class="icon-btn glyph" data-cmd="bold" data-i18n-title="tip.bold"><b>B</b></button>
+        <button class="icon-btn glyph" data-cmd="italic" data-i18n-title="tip.italic"><i>I</i></button>
+        <button class="icon-btn glyph" data-cmd="underline" data-i18n-title="tip.underline"><u>U</u></button>
+        <button class="icon-btn glyph" data-cmd="strikeThrough" data-i18n-title="tip.strike"><s>S</s></button>
+        <button class="icon-btn glyph" data-cmd="superscript" data-i18n-title="tip.sup">x<sup>2</sup></button>
+        <button class="icon-btn glyph" data-cmd="subscript" data-i18n-title="tip.sub">x<sub>2</sub></button>
+        <label class="icon-btn glyph color-btn" data-i18n-title="tip.color">
+          <span class="g">A</span><i class="bar" id="bar-color"></i>
+          <input type="color" id="inp-color" value="#000000" />
+        </label>
+        <label class="icon-btn glyph color-btn" data-i18n-title="tip.highlight">
+          <span class="g hl">ab</span><i class="bar" id="bar-hl"></i>
+          <input type="color" id="inp-hl" value="#ffff00" />
+        </label>
+      </div>
+      <div class="tb-group">
+        <button class="icon-btn" data-cmd="justifyLeft" data-i18n-title="tip.alignLeft"><svg class="i"><use href="#i-alignl"/></svg></button>
+        <button class="icon-btn" data-cmd="justifyCenter" data-i18n-title="tip.alignCenter"><svg class="i"><use href="#i-alignc"/></svg></button>
+        <button class="icon-btn" data-cmd="justifyRight" data-i18n-title="tip.alignRight"><svg class="i"><use href="#i-alignr"/></svg></button>
+        <button class="icon-btn" data-cmd="justifyFull" data-i18n-title="tip.alignJustify"><svg class="i"><use href="#i-alignj"/></svg></button>
+      </div>
+      <div class="tb-group">
+        <button class="icon-btn" data-cmd="insertUnorderedList" data-i18n-title="tip.ul"><svg class="i"><use href="#i-ul"/></svg></button>
+        <button class="icon-btn" data-cmd="insertOrderedList" data-i18n-title="tip.ol"><svg class="i"><use href="#i-ol"/></svg></button>
+        <button class="icon-btn" data-cmd="outdent" data-i18n-title="tip.outdent"><svg class="i"><use href="#i-outdent"/></svg></button>
+        <button class="icon-btn" data-cmd="indent" data-i18n-title="tip.indent"><svg class="i"><use href="#i-indent"/></svg></button>
+        <select id="sel-lh" data-i18n-title="tip.lineSpacing" class="select lh-select">
+          <option value="" data-i18n="lh.default"></option>
+          <option value="1">1.0</option>
+          <option value="1.15">1.15</option>
+          <option value="1.5">1.5</option>
+          <option value="2">2.0</option>
+          <option value="2.5">2.5</option>
+        </select>
+      </div>
+      <div class="tb-group">
+        <button class="icon-btn" id="btn-link" data-i18n-title="tip.link"><svg class="i"><use href="#i-link"/></svg></button>
+        <button class="icon-btn" id="btn-image" data-i18n-title="tip.image"><svg class="i"><use href="#i-image"/></svg></button>
+        <button class="icon-btn" id="btn-table" data-i18n-title="tip.table"><svg class="i"><use href="#i-table"/></svg></button>
+        <button class="icon-btn" id="btn-hr" data-i18n-title="tip.hr"><svg class="i"><use href="#i-hr"/></svg></button>
+        <button class="icon-btn" id="btn-clear" data-i18n-title="tip.clear"><svg class="i"><use href="#i-clear"/></svg></button>
+      </div>
+      <input type="file" id="file-image" accept="image/*" hidden />
+    </div>
+
+    <!-- Contextual bar (tables / images) -->
+    <div class="context-bar" id="context-bar" hidden>
+      <div id="ctx-table" hidden>
+        <span class="ctx-label" data-i18n="ctx.table"></span>
+        <button class="chip" data-tbl="row-add">+ <span data-i18n="ctx.row"></span></button>
+        <button class="chip" data-tbl="col-add">+ <span data-i18n="ctx.col"></span></button>
+        <button class="chip" data-tbl="row-del">− <span data-i18n="ctx.row"></span></button>
+        <button class="chip" data-tbl="col-del">− <span data-i18n="ctx.col"></span></button>
+        <button class="chip danger" data-tbl="del"><span data-i18n="ctx.tableDel"></span></button>
+      </div>
+      <div id="ctx-image" hidden>
+        <span class="ctx-label" data-i18n="ctx.image"></span>
+        <button class="chip" data-img="smaller">− <span data-i18n="ctx.smaller"></span></button>
+        <button class="chip" data-img="larger">+ <span data-i18n="ctx.larger"></span></button>
+        <button class="chip" data-img="fit"><span data-i18n="ctx.fit"></span></button>
+        <button class="chip danger" data-img="del"><span data-i18n="ctx.imgDel"></span></button>
+      </div>
+    </div>
+
+    <!-- Find & replace -->
+    <div class="findbar" id="findbar" hidden>
+      <input id="find-q" type="text" class="field" data-i18n-ph="find.find" spellcheck="false" />
+      <input id="find-r" type="text" class="field" data-i18n-ph="find.replaceWith" spellcheck="false" />
+      <label class="check"><input type="checkbox" id="find-case" /><span data-i18n="find.matchCase"></span></label>
+      <span id="find-count" class="find-count"></span>
+      <button class="icon-btn sm" id="find-prev" data-i18n-title="find.prev"><svg class="i"><use href="#i-up"/></svg></button>
+      <button class="icon-btn sm" id="find-next" data-i18n-title="find.next"><svg class="i"><use href="#i-down"/></svg></button>
+      <button class="btn tonal sm" id="find-replace" data-i18n="find.replace"></button>
+      <button class="btn tonal sm" id="find-replace-all" data-i18n="find.replaceAll"></button>
+      <button class="icon-btn sm" id="find-close" data-i18n-title="btn.close"><svg class="i"><use href="#i-close"/></svg></button>
+    </div>
+
+    <!-- Workspace -->
+    <main id="workspace">
+      <div id="pagewrap">
+        <article id="editor" class="page" contenteditable="true" spellcheck="true"><p><br></p></article>
+      </div>
+    </main>
+
+    <!-- Status bar -->
+    <footer class="status-bar">
+      <span id="st-words"></span>
+      <span id="st-chars"></span>
+      <span id="st-pages"></span>
+      <span class="spacer"></span>
+      <button class="icon-btn sm" id="zoom-out" data-i18n-title="tip.zoomOut"><svg class="i"><use href="#i-minus"/></svg></button>
+      <input type="range" id="zoom-range" min="50" max="200" step="5" value="100" aria-label="Zoom" />
+      <button class="icon-btn sm" id="zoom-in" data-i18n-title="tip.zoomIn"><svg class="i"><use href="#i-plus"/></svg></button>
+      <button class="zoom-val" id="zoom-val" data-i18n-title="tip.zoomReset">100%</button>
+    </footer>
+  </div>
+
+  <!-- Settings dialog -->
+  <dialog id="dlg-settings" class="dialog wide">
+    <h2 data-i18n="settings.title"></h2>
+    <div class="dlg-body">
+      <section>
+        <h3 data-i18n="settings.theme"></h3>
+        <div class="segmented" id="seg-theme">
+          <button data-mode="light"><svg class="i"><use href="#i-sun"/></svg><span data-i18n="theme.light"></span></button>
+          <button data-mode="dark"><svg class="i"><use href="#i-moon"/></svg><span data-i18n="theme.dark"></span></button>
+          <button data-mode="system"><svg class="i"><use href="#i-auto"/></svg><span data-i18n="theme.system"></span></button>
+        </div>
+      </section>
+      <section>
+        <h3 data-i18n="settings.accent"></h3>
+        <div class="swatches" id="swatches"></div>
+        <label class="custom-color">
+          <input type="color" id="inp-seed" value="#6750a4" />
+          <span data-i18n="settings.customColor"></span>
+          <code id="seed-hex">#6750A4</code>
+        </label>
+      </section>
+      <section>
+        <h3 data-i18n="settings.language"></h3>
+        <select id="sel-lang" class="select block">
+          <option value="auto" data-i18n="lang.auto"></option>
+          <option value="en">English</option>
+          <option value="vi">Tiếng Việt</option>
+        </select>
+      </section>
+      <section>
+        <h3 data-i18n="settings.page"></h3>
+        <div class="row3">
+          <label class="lbl"><span data-i18n="page.size"></span>
+            <select id="sel-psize" class="select block"><option value="A4">A4</option><option value="Letter">Letter</option><option value="A5">A5</option></select></label>
+          <label class="lbl"><span data-i18n="page.orient"></span>
+            <select id="sel-orient" class="select block"><option value="portrait" data-i18n="orient.portrait"></option><option value="landscape" data-i18n="orient.landscape"></option></select></label>
+          <label class="lbl"><span data-i18n="page.margins"></span>
+            <select id="sel-margin" class="select block"><option value="narrow" data-i18n="margin.narrow"></option><option value="moderate" data-i18n="margin.moderate"></option><option value="normal" data-i18n="margin.normal"></option><option value="wide" data-i18n="margin.wide"></option></select></label>
+        </div>
+        <label class="switch-row"><span data-i18n="settings.spellcheck"></span><span class="switch"><input type="checkbox" id="chk-spell" /><i></i></span></label>
+      </section>
+      <section class="about">
+        <h3 data-i18n="settings.about"></h3>
+        <p><strong>Material Docx</strong> <span id="app-ver">1.0.0</span></p>
+        <p data-i18n="about.credit"></p>
+      </section>
+    </div>
+    <div class="dlg-actions"><button class="btn text" data-close data-i18n="btn.done"></button></div>
+  </dialog>
+
+  <!-- Table dialog -->
+  <dialog id="dlg-table" class="dialog">
+    <h2 data-i18n="table.title"></h2>
+    <div class="dlg-body">
+      <div class="row2">
+        <label class="lbl"><span data-i18n="table.rows"></span><input id="tbl-rows" class="field" type="number" min="1" max="50" value="3" /></label>
+        <label class="lbl"><span data-i18n="table.cols"></span><input id="tbl-cols" class="field" type="number" min="1" max="12" value="3" /></label>
+      </div>
+    </div>
+    <div class="dlg-actions">
+      <button class="btn text" data-close data-i18n="btn.cancel"></button>
+      <button class="btn filled" id="tbl-ok" data-i18n="btn.insert"></button>
+    </div>
+  </dialog>
+
+  <!-- Link dialog -->
+  <dialog id="dlg-link" class="dialog">
+    <h2 data-i18n="link.title"></h2>
+    <div class="dlg-body">
+      <label class="lbl"><span data-i18n="link.text"></span><input id="link-text" class="field" type="text" /></label>
+      <label class="lbl"><span data-i18n="link.url"></span><input id="link-url" class="field" type="url" placeholder="https://" /></label>
+    </div>
+    <div class="dlg-actions">
+      <button class="btn text" id="link-remove" data-i18n="link.remove"></button>
+      <span class="spacer"></span>
+      <button class="btn text" data-close data-i18n="btn.cancel"></button>
+      <button class="btn filled" id="link-ok" data-i18n="btn.apply"></button>
+    </div>
+  </dialog>
+
+  <!-- Confirm dialog -->
+  <dialog id="dlg-confirm" class="dialog">
+    <h2 id="cf-title"></h2>
+    <div class="dlg-body"><p id="cf-msg"></p></div>
+    <div class="dlg-actions">
+      <button class="btn text" id="cf-cancel" data-i18n="btn.cancel"></button>
+      <span class="spacer"></span>
+      <button class="btn text" id="cf-no"></button>
+      <button class="btn filled" id="cf-yes"></button>
+    </div>
+  </dialog>
+
+  <div id="snackbar" class="snackbar" role="status" aria-live="polite"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

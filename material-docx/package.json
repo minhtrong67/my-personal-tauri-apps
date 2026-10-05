@@ -1,0 +1,16 @@
+{
+  "name": "material-docx",
+  "version": "1.0.0",
+  "description": "A simple, Material Design 3 word processor with .docx support.",
+  "author": "minhtrong67",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "icons": "python3 tools/make-icons.py"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

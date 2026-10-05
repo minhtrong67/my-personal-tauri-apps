@@ -2243,6 +2243,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "material-docx"
+version = "1.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
 name = "material-note"
 version = "1.0.0"
 dependencies = [
