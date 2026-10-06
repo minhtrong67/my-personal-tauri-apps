@@ -247,14 +247,14 @@ fn find_removed(paths: Vec<String>) -> Vec<String> {
         .collect()
 }
 
-/// Save a PNG screenshot (base64) into Pictures\Lumina and return its path.
+/// Save a PNG screenshot (base64) into Pictures\Material Video Player and return its path.
 #[tauri::command]
 fn save_screenshot(app: AppHandle, base64_png: String, file_name: String) -> Result<String, String> {
     let dir = app
         .path()
         .picture_dir()
         .map_err(|e| e.to_string())?
-        .join("Lumina");
+        .join("Material Video Player");
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let safe: String = file_name
         .chars()
@@ -374,5 +374,5 @@ pub fn run() {
             get_launch_args
         ])
         .run(tauri::generate_context!())
-        .expect("failed to start Lumina");
+        .expect("failed to start Material Video Player");
 }

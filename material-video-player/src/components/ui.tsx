@@ -35,7 +35,7 @@ export function IconButton({
   return (
     <button
       type="button" title={title} aria-label={title} disabled={disabled} onClick={onClick} onContextMenu={onContextMenu}
-      className={`${dim} ${v} rounded-full inline-flex items-center justify-center transition-all duration-150 focus-ring disabled:opacity-40 disabled:pointer-events-none shrink-0 ${className}`}
+      className={`${dim} ${v} rounded-full inline-flex items-center justify-center transition-all duration-200 ease-emphasized active:scale-90 focus-ring disabled:opacity-40 disabled:pointer-events-none shrink-0 ${className}`}
     >
       <Icon name={icon} fill={fill || active} size={isz} />
     </button>
@@ -59,7 +59,7 @@ export function Button({
   return (
     <button
       type="button" disabled={disabled} onClick={onClick}
-      className={`h-10 ${icon ? 'pl-4 pr-6' : 'px-6'} rounded-full inline-flex items-center justify-center gap-2 text-label-lg transition-all duration-150 focus-ring disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap ${v} ${className}`}
+      className={`h-10 ${icon ? 'pl-4 pr-6' : 'px-6'} rounded-full inline-flex items-center justify-center gap-2 text-label-lg transition-all duration-200 ease-emphasized active:scale-[0.96] focus-ring disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap ${v} ${className}`}
     >
       {icon && <Icon name={icon} size={18} />}
       {children}
@@ -88,9 +88,9 @@ export function Segmented<T extends string>({ value, options, onChange }: { valu
       {options.map((o, i) => (
         <button
           key={o.value} type="button" onClick={() => onChange(o.value)}
-          className={`h-10 px-4 inline-flex items-center gap-2 text-label-lg transition-colors ${i > 0 ? 'border-l border-outline' : ''} ${value === o.value ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface hover:bg-on-surface/[.08]'}`}
+          className={`h-10 px-4 inline-flex items-center gap-2 text-label-lg transition-all duration-200 active:scale-[0.97] ${i > 0 ? 'border-l border-outline' : ''} ${value === o.value ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface hover:bg-on-surface/[.08]'}`}
         >
-          {value === o.value ? <Icon name="check" size={18} /> : o.icon ? <Icon name={o.icon} size={18} /> : null}
+          {value === o.value ? <Icon name="check" size={18} className="animate-pop" /> : o.icon ? <Icon name={o.icon} size={18} /> : null}
           {o.label}
         </button>
       ))}
@@ -144,23 +144,39 @@ export function Modal({ title, children, actions, onClose, wide }: { title: stri
   );
 }
 
-/** Menu ngữ cảnh / dropdown Material 3 */
+/** Material 3 context menu / dropdown with one level of fly-out sub menus */
 export function ContextMenu() {
   const menu = useStore((s) => s.menu);
   const close = useStore((s) => s.closeMenu);
   const ref = useRef<HTMLDivElement>(null);
+  const subRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [sub, setSub] = useState<{ items: MenuItem[]; rect: DOMRect } | null>(null);
+  const [subPos, setSubPos] = useState<{ x: number; y: number } | null>(null);
 
   useLayoutEffect(() => {
+    setSub(null);
     if (!menu || !ref.current) return;
     const r = ref.current.getBoundingClientRect();
     setPos({ x: Math.max(8, Math.min(menu.x, window.innerWidth - r.width - 8)), y: Math.max(8, Math.min(menu.y, window.innerHeight - r.height - 8)) });
   }, [menu]);
 
+  useLayoutEffect(() => {
+    if (!sub || !subRef.current || !ref.current) { setSubPos(null); return; }
+    const w = subRef.current.getBoundingClientRect();
+    const m = ref.current.getBoundingClientRect();
+    let x = sub.rect.right - 2;
+    if (x + w.width > window.innerWidth - 8) x = m.left - w.width + 2;
+    const y = Math.max(8, Math.min(sub.rect.top - 8, window.innerHeight - w.height - 8));
+    setSubPos({ x: Math.max(8, x), y });
+  }, [sub]);
+
   useEffect(() => {
     if (!menu) return;
     const down = (e: globalThis.MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) close();
+      const n = e.target as Node;
+      if (ref.current?.contains(n) || subRef.current?.contains(n)) return;
+      close();
     };
     const key = (e: KeyboardEvent) => e.key === 'Escape' && close();
     window.addEventListener('mousedown', down);
@@ -176,27 +192,49 @@ export function ContextMenu() {
   }, [menu, close]);
 
   if (!menu) return null;
+
+  const row = (it: MenuItem, i: number, inSub: boolean) =>
+    it.divider ? (
+      <div key={i} className="h-px my-2 mx-3 bg-outline-variant" />
+    ) : (
+      <button
+        key={i} type="button" disabled={it.disabled}
+        onMouseEnter={(e) => {
+          if (inSub) return;
+          if (it.children) setSub({ items: it.children, rect: e.currentTarget.getBoundingClientRect() });
+          else setSub(null);
+        }}
+        onClick={(e) => {
+          if (it.children) { setSub({ items: it.children, rect: e.currentTarget.getBoundingClientRect() }); return; }
+          close();
+          it.onClick?.();
+        }}
+        className={`w-full h-10 px-3 flex items-center gap-3 text-left transition-colors duration-150 hover:bg-on-surface/[.08] active:bg-on-surface/[.12] disabled:opacity-40 ${it.danger ? 'text-error' : 'text-on-surface'} ${sub && !inSub && it.children && sub.items === it.children ? 'bg-on-surface/[.08]' : ''}`}
+      >
+        <span className="w-6 flex justify-center text-on-surface-variant">
+          {it.checked ? <Icon name="check" size={20} className="text-primary animate-pop" /> : it.icon && <Icon name={it.icon} size={20} className={it.danger ? 'text-error' : ''} />}
+        </span>
+        <span className="truncate text-body-md flex-1">{it.label}</span>
+        {it.shortcut && <span className="text-label-md text-on-surface-variant pl-4">{it.shortcut}</span>}
+        {it.children && <Icon name="chevron_right" size={18} className="text-on-surface-variant -mr-1" />}
+      </button>
+    );
+
+  const panel = 'rounded-xl bg-surface-container shadow-xl border border-outline-variant/40 py-2 overflow-y-auto max-h-[calc(100vh-16px)] animate-scale-in';
   return (
-    <div
-      ref={ref} style={{ left: pos.x, top: pos.y }}
-      className="fixed z-[60] min-w-[220px] max-w-[320px] py-2 rounded-xl bg-surface-container shadow-xl border border-outline-variant/40 animate-scale-in origin-top-left"
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      {menu.items.map((it, i) =>
-        it.divider ? (
-          <div key={i} className="h-px my-2 bg-outline-variant" />
-        ) : (
-          <button
-            key={i} type="button" disabled={it.disabled}
-            onClick={() => { close(); it.onClick?.(); }}
-            className={`w-full h-12 px-3 flex items-center gap-3 text-body-lg text-left hover:bg-on-surface/[.08] disabled:opacity-40 ${it.danger ? 'text-error' : 'text-on-surface'}`}
-          >
-            <span className="w-6 flex justify-center text-on-surface-variant">{it.checked ? <Icon name="check" size={20} className="text-primary" /> : it.icon && <Icon name={it.icon} size={20} className={it.danger ? 'text-error' : ''} />}</span>
-            <span className="truncate text-body-md">{it.label}</span>
-          </button>
-        ),
+    <>
+      <div ref={ref} style={{ left: pos.x, top: pos.y }} className={`fixed z-[60] min-w-[230px] max-w-[320px] origin-top-left ${panel}`} onContextMenu={(e) => e.preventDefault()}>
+        {menu.items.map((it, i) => row(it, i, false))}
+      </div>
+      {sub && (
+        <div
+          ref={subRef} style={{ left: subPos?.x ?? -9999, top: subPos?.y ?? -9999 }}
+          className={`fixed z-[61] min-w-[210px] max-w-[300px] origin-top-left ${panel}`} onContextMenu={(e) => e.preventDefault()}
+        >
+          {sub.items.map((it, i) => row(it, i, true))}
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -209,7 +247,7 @@ export function openMenuAt(e: MouseEvent, items: MenuItem[]) {
 export function openMenuBelow(e: MouseEvent<HTMLElement>, items: MenuItem[], alignRight = false, above = false) {
   e.stopPropagation();
   const r = e.currentTarget.getBoundingClientRect();
-  const h = items.reduce((a, i) => a + (i.divider ? 17 : 48), 16);
+  const h = items.reduce((a, i) => a + (i.divider ? 17 : 40), 16);
   useStore.getState().openMenu(alignRight ? r.right - 220 : r.left, above ? r.top - h - 4 : r.bottom + 4, items);
 }
 

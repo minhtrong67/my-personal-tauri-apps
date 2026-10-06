@@ -102,7 +102,7 @@ export function SeekBar() {
         <div className="absolute top-1/2 w-3.5 h-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary shadow scale-0 group-hover:scale-100 transition-transform" style={{ left: `${pct}%` }} />
       </div>
       {hover && duration > 0 && (
-        <div className="absolute bottom-7 -translate-x-1/2 flex flex-col items-center gap-1 pointer-events-none" style={{ left: Math.min(Math.max(hover.x, 100), (bar.current?.clientWidth ?? 0) - 100) }}>
+        <div className="absolute bottom-7 -translate-x-1/2 flex flex-col items-center gap-1 pointer-events-none animate-fade-in" style={{ left: Math.min(Math.max(hover.x, 100), (bar.current?.clientWidth ?? 0) - 100) }}>
           <canvas ref={canvas} className="rounded-lg shadow-lg border border-white/30 bg-black max-w-[192px]" />
           <div className="px-2 py-0.5 rounded-md bg-black/80 text-white text-label-md tabular-nums">{fmtTime(hover.t)}</div>
         </div>

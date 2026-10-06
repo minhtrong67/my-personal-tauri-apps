@@ -18,6 +18,7 @@ export function VideoSurface({ onActivity }: { onActivity: () => void }) {
   const loading = useStore((s) => s.loading);
   const buffering = useStore((s) => s.buffering);
   const mini = useStore((s) => s.mini);
+  const [ready, setReady] = useState(false);
   const [flash, setFlash] = useState<{ icon: string; key: number } | null>(null);
   const [skip, setSkip] = useState<{ text: string; side: 'l' | 'r'; key: number } | null>(null);
   const drag = useRef<{ x: number; y: number; px: number; py: number; moved: boolean } | null>(null);
@@ -36,6 +37,7 @@ export function VideoSurface({ onActivity }: { onActivity: () => void }) {
     const el = ref.current;
     if (!el || !cur) return;
     engine.loadedPath = null;
+    setReady(false);
     el.src = assetUrl(cur.path);
     el.load();
     engine.setRate(useStore.getState().rate);
@@ -70,6 +72,7 @@ export function VideoSurface({ onActivity }: { onActivity: () => void }) {
     const s = useStore.getState();
     const f = s.queue[s.index];
     engine.loadedPath = f?.path ?? null;
+    setReady(true);
     useStore.setState({ duration: el.duration, videoSize: { w: el.videoWidth, h: el.videoHeight }, loading: false });
     el.playbackRate = s.rate;
     const prog = f ? s.progress[pathKey(f.path)] : undefined;
@@ -113,7 +116,8 @@ export function VideoSurface({ onActivity }: { onActivity: () => void }) {
       if (d.moved) useStore.getState().setAdjust({ panX: d.px + dx, panY: d.py + dy });
     }
   };
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
     const moved = drag.current?.moved;
     drag.current = null;
     if (moved) return;
@@ -146,7 +150,7 @@ export function VideoSurface({ onActivity }: { onActivity: () => void }) {
     >
       <video
         ref={ref} crossOrigin="anonymous" playsInline preload="auto" draggable={false}
-        className="w-full h-full"
+        className={`w-full h-full transition-opacity duration-500 ${ready ? 'opacity-100' : 'opacity-0'}`}
         style={{ objectFit: adjust.fit, transform, filter, cursor: adjust.zoom > 1 ? 'grab' : undefined }}
         onLoadedMetadata={onLoadedMetadata} onError={onError} onEnded={onEnded}
         onPlay={() => { useStore.setState({ playing: true }); engine.probeFps(); }}
@@ -161,12 +165,12 @@ export function VideoSurface({ onActivity }: { onActivity: () => void }) {
 
       {(loading || buffering) && !error && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-14 h-14 rounded-full border-4 border-white/25 border-t-white animate-spin" />
+          <div className="w-14 h-14 rounded-full border-4 border-white/25 border-t-white animate-spin animate-fade-in" />
         </div>
       )}
       {flash && (
         <div key={flash.key} className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-20 h-20 rounded-full bg-black/55 text-white flex items-center justify-center animate-[ping-out_.6s_ease-out_forwards]">
+          <div className="w-20 h-20 rounded-full bg-black/55 backdrop-blur-sm text-white flex items-center justify-center animate-[ping-out_.6s_ease-out_forwards]">
             <Icon name={flash.icon} fill size={44} />
           </div>
         </div>

@@ -91,7 +91,7 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (!('mediaSession' in navigator)) return;
-    navigator.mediaSession.metadata = cur ? new MediaMetadata({ title: cur.name, artist: 'Lumina' }) : null;
+    navigator.mediaSession.metadata = cur ? new MediaMetadata({ title: cur.name, artist: 'Material Video Player' }) : null;
   }, [cur?.path]);
 
   // keyboard shortcuts
@@ -157,11 +157,11 @@ export default function App() {
   return (
     <div className="h-full flex flex-col bg-surface text-on-surface">
       {screen === 'player' ? (
-        <div className="flex-1 min-h-0"><Player /></div>
+        <div key="player" className="flex-1 min-h-0 animate-fade-in"><Player /></div>
       ) : (
         <>
           <TitleBar />
-          <main className="flex-1 min-h-0 mx-3 mb-3 rounded-3xl bg-surface-container-low overflow-hidden">
+          <main key={screen} className="flex-1 min-h-0 mx-3 mb-3 rounded-3xl bg-surface-container-low overflow-hidden animate-rise">
             {screen === 'settings' ? <SettingsView /> : <HomeView />}
           </main>
         </>

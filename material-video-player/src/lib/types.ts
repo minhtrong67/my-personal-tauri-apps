@@ -43,6 +43,7 @@ export interface SubTrack {
   path: string;
 }
 
+export type ViewMode = 'list' | 'grid';
 export type Lang = 'auto' | 'en' | 'vi';
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type RepeatMode = 'off' | 'all' | 'one';
@@ -73,6 +74,8 @@ export interface Settings {
   autoScanVideos: boolean;
   libraryFolders: string[];
   librarySort: LibrarySort;
+  libraryView: ViewMode;
+  queueView: ViewMode;
 }
 
 export const defaultSettings: Settings = {
@@ -91,6 +94,8 @@ export const defaultSettings: Settings = {
   autoScanVideos: true,
   libraryFolders: [],
   librarySort: 'date',
+  libraryView: 'grid',
+  queueView: 'list',
 };
 
 export interface Adjust {
@@ -119,6 +124,9 @@ export interface MenuItem {
   divider?: boolean;
   disabled?: boolean;
   checked?: boolean;
+  shortcut?: string;
+  /** Fly-out sub menu */
+  children?: MenuItem[];
 }
 
 export interface MenuState {

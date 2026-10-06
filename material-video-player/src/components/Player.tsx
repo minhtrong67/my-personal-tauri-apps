@@ -6,7 +6,8 @@ import { Controls } from './Controls';
 import { QueuePanel } from './QueuePanel';
 import { VideoSurface } from './VideoSurface';
 import { WindowControls } from './TitleBar';
-import { IconButton } from './ui';
+import { IconButton, openMenuAt } from './ui';
+import { buildVideoMenu } from '../lib/videoMenu';
 
 export function Player() {
   const t = useT();
@@ -39,7 +40,7 @@ export function Player() {
 
   return (
     <div className="h-full flex bg-black" onMouseMove={wake} style={{ cursor: show ? undefined : 'none' }}>
-      <div className="relative flex-1 min-w-0 h-full overflow-hidden">
+      <div className="relative flex-1 min-w-0 h-full overflow-hidden" onContextMenu={(e) => openMenuAt(e, buildVideoMenu())}>
         <VideoSurface onActivity={wake} />
 
         {/* top overlay */}

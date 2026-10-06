@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Lumina",
+  "productName": "Material Video Player",
   "version": "1.0.0",
-  "identifier": "com.minhtrong67.lumina",
+  "identifier": "com.minhtrong67.material-video-player",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Lumina",
+        "title": "Material Video Player",
         "width": 1280,
         "height": 780,
         "minWidth": 800,
@@ -34,7 +34,7 @@
     "targets": ["nsis"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png", "icons/icon.ico"],
     "shortDescription": "Material Design 3 video player",
-    "longDescription": "Lumina is a full-featured video player for Windows with a Material Design 3 interface.",
+    "longDescription": "Material Video Player is a full-featured video player for Windows with a Material Design 3 interface.",
     "windows": {
       "nsis": {
         "installerIcon": "icons/installer.ico",

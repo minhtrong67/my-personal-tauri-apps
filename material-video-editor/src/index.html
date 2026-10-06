@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#fef7ff" />
+  <title>Material Video Editor</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" stroke-width="3.6"/></symbol>
+    <symbol id="i-first" viewBox="0 0 24 24"><path d="M6 5v14M19 5L9 12l10 7z"/></symbol>
+    <symbol id="i-last" viewBox="0 0 24 24"><path d="M18 5v14M5 5l10 7L5 19z"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="i-fwd" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-split" viewBox="0 0 24 24"><path d="M12 3v18M8 7L4 12l4 5M16 7l4 5-4 5"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></symbol>
+    <symbol id="i-wand" viewBox="0 0 24 24"><path d="M5 19L15 9M14 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1zM19 12l.7 1.3L21 14l-1.3.7L19 16l-.7-1.3L17 14l1.3-.7z"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-9 9"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></symbol>
+    <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zM17 9l4 6M21 9l-4 6"/></symbol>
+    <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></symbol>
+    <symbol id="i-magnet" viewBox="0 0 24 24"><path d="M6 3v8a6 6 0 0 0 12 0V3h-4v8a2 2 0 0 1-4 0V3zM6 7h4M14 7h4"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+    <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-new" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M12 12v6M9 15h6"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM7 3v5h8V3M7 21v-7h10v7"/></symbol>
+    <symbol id="i-tune" viewBox="0 0 24 24"><path d="M4 7h8M20 7h-4M4 17h4M20 17H12"/><circle cx="14" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></symbol>
+    <symbol id="i-auto" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+    <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6M5.5 15a7 7 0 0 0 12 2.5M18.5 9A7 7 0 0 0 6.5 6.5"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></symbol>
+  </svg>
+
+  <div id="app">
+    <header class="top-bar">
+      <button class="icon-btn" id="btn-menu" data-i18n-title="menu.file" aria-haspopup="menu"><svg class="i"><use href="#i-menu"/></svg></button>
+      <div class="doc-title">
+        <input id="proj-name" type="text" spellcheck="false" maxlength="100" data-i18n-ph="project.untitled" aria-label="Project name" />
+        <span id="dirty-dot" class="dirty-dot" hidden></span>
+      </div>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="btn-undo" data-i18n-title="tip.undo"><svg class="i"><use href="#i-undo"/></svg></button>
+      <button class="icon-btn" id="btn-redo" data-i18n-title="tip.redo"><svg class="i"><use href="#i-redo"/></svg></button>
+      <button class="icon-btn" id="btn-theme" data-i18n-title="tip.theme"><svg class="i"><use id="theme-use" href="#i-auto"/></svg></button>
+      <button class="icon-btn" id="btn-settings" data-i18n-title="tip.settings"><svg class="i"><use href="#i-tune"/></svg></button>
+      <button class="btn filled" id="btn-export"><svg class="i"><use href="#i-export"/></svg><span data-i18n="export.button"></span></button>
+    </header>
+
+    <div class="menu" id="file-menu" role="menu" hidden>
+      <button class="menu-item" role="menuitem" data-act="new"><svg class="i"><use href="#i-new"/></svg><span data-i18n="file.new"></span><kbd>Ctrl+N</kbd></button>
+      <button class="menu-item" role="menuitem" data-act="open"><svg class="i"><use href="#i-open"/></svg><span data-i18n="file.open"></span><kbd>Ctrl+O</kbd></button>
+      <div class="menu-sep"></div>
+      <button class="menu-item" role="menuitem" data-act="save"><svg class="i"><use href="#i-save"/></svg><span data-i18n="file.save"></span><kbd>Ctrl+S</kbd></button>
+      <button class="menu-item" role="menuitem" data-act="saveas"><svg class="i"><use href="#i-save"/></svg><span data-i18n="file.saveAs"></span><kbd>Ctrl+Shift+S</kbd></button>
+      <div class="menu-sep"></div>
+      <button class="menu-item" role="menuitem" data-act="import"><svg class="i"><use href="#i-film"/></svg><span data-i18n="file.import"></span><kbd>Ctrl+I</kbd></button>
+      <button class="menu-item" role="menuitem" data-act="export"><svg class="i"><use href="#i-export"/></svg><span data-i18n="file.export"></span><kbd>Ctrl+E</kbd></button>
+      <div class="menu-sep"></div>
+      <button class="menu-item" role="menuitem" data-act="exit"><svg class="i"><use href="#i-close"/></svg><span data-i18n="file.exit"></span></button>
+    </div>
+
+    <div id="workbench">
+      <aside id="left">
+        <nav class="rail" id="rail">
+          <button data-tab="media" class="on"><svg class="i"><use href="#i-film"/></svg><span data-i18n="tab.media"></span></button>
+          <button data-tab="text"><svg class="i"><use href="#i-text"/></svg><span data-i18n="tab.text"></span></button>
+          <button data-tab="effects"><svg class="i"><use href="#i-wand"/></svg><span data-i18n="tab.effects"></span></button>
+          <button data-tab="transitions"><svg class="i"><use href="#i-swap"/></svg><span data-i18n="tab.transitions"></span></button>
+        </nav>
+        <section id="left-body"></section>
+      </aside>
+
+      <section id="center">
+        <div id="stage"><div id="canvas-wrap"><canvas id="cv"></canvas><canvas id="cv-ov"></canvas><div id="empty-hint"><svg class="i"><use href="#i-film"/></svg><p data-i18n="empty.hint"></p></div></div></div>
+        <div class="transport">
+          <span id="time-cur" class="time">00:00.00</span>
+          <div class="spacer"></div>
+          <button class="icon-btn" id="tp-first" data-i18n-title="tip.first"><svg class="i"><use href="#i-first"/></svg></button>
+          <button class="icon-btn" id="tp-back" data-i18n-title="tip.stepBack"><svg class="i"><use href="#i-back"/></svg></button>
+          <button class="icon-btn play" id="tp-play" data-i18n-title="tip.play"><svg class="i"><use id="play-use" href="#i-play"/></svg></button>
+          <button class="icon-btn" id="tp-fwd" data-i18n-title="tip.stepFwd"><svg class="i"><use href="#i-fwd"/></svg></button>
+          <button class="icon-btn" id="tp-last" data-i18n-title="tip.last"><svg class="i"><use href="#i-last"/></svg></button>
+          <div class="spacer"></div>
+          <button class="icon-btn sm" id="tp-mute" data-i18n-title="tip.volume"><svg class="i"><use id="mute-use" href="#i-vol"/></svg></button>
+          <input type="range" id="tp-vol" min="0" max="1" step="0.05" value="1" aria-label="Volume" />
+          <span id="time-tot" class="time dim">00:00.00</span>
+        </div>
+      </section>
+
+      <aside id="right"><div id="inspector"></div></aside>
+    </div>
+
+    <section id="timeline">
+      <div class="tl-toolbar">
+        <button class="icon-btn sm" id="tl-split" data-i18n-title="tip.split"><svg class="i"><use href="#i-split"/></svg></button>
+        <button class="icon-btn sm" id="tl-dup" data-i18n-title="tip.duplicate"><svg class="i"><use href="#i-copy"/></svg></button>
+        <button class="icon-btn sm" id="tl-del" data-i18n-title="tip.delete"><svg class="i"><use href="#i-trash"/></svg></button>
+        <button class="icon-btn sm toggle" id="tl-snap" data-i18n-title="tip.snap"><svg class="i"><use href="#i-magnet"/></svg></button>
+        <div class="spacer"></div>
+        <button class="icon-btn sm" id="tl-zout" data-i18n-title="tip.zoomOut"><svg class="i"><use href="#i-minus"/></svg></button>
+        <input type="range" id="tl-zoom" min="0" max="100" step="1" value="40" aria-label="Timeline zoom" />
+        <button class="icon-btn sm" id="tl-zin" data-i18n-title="tip.zoomIn"><svg class="i"><use href="#i-plus"/></svg></button>
+        <button class="icon-btn sm" id="tl-fit" data-i18n-title="tip.fit"><svg class="i"><use href="#i-fit"/></svg></button>
+      </div>
+      <div id="tl-scroll"><div id="tl-content"></div></div>
+    </section>
+  </div>
+
+  <input type="file" id="file-import" multiple accept="video/*,audio/*,image/*,.mkv,.mov,.m4v,.flac,.opus" hidden />
+  <input type="file" id="file-project" accept=".mvep,application/json" hidden />
+
+  <dialog id="dlg-settings" class="dialog wide">
+    <h2 data-i18n="settings.title"></h2>
+    <div class="dlg-body">
+      <section>
+        <h3 data-i18n="settings.theme"></h3>
+        <div class="segmented" id="seg-theme">
+          <button data-mode="light"><svg class="i"><use href="#i-sun"/></svg><span data-i18n="theme.light"></span></button>
+          <button data-mode="dark"><svg class="i"><use href="#i-moon"/></svg><span data-i18n="theme.dark"></span></button>
+          <button data-mode="system"><svg class="i"><use href="#i-auto"/></svg><span data-i18n="theme.system"></span></button>
+        </div>
+      </section>
+      <section>
+        <h3 data-i18n="settings.accent"></h3>
+        <div class="swatches" id="swatches"></div>
+        <label class="custom-color"><input type="color" id="inp-seed" value="#6750a4" /><span data-i18n="settings.customColor"></span><code id="seed-hex">#6750A4</code></label>
+      </section>
+      <section>
+        <h3 data-i18n="settings.language"></h3>
+        <select id="sel-lang" class="select block">
+          <option value="auto" data-i18n="lang.auto"></option>
+          <option value="en">English</option>
+          <option value="vi">Tiếng Việt</option>
+        </select>
+      </section>
+      <section class="about">
+        <h3 data-i18n="settings.about"></h3>
+        <p><strong>Material Video Editor</strong> 1.0.0</p>
+        <p data-i18n="about.credit"></p>
+      </section>
+    </div>
+    <div class="dlg-actions"><button class="btn text" data-close data-i18n="btn.done"></button></div>
+  </dialog>
+
+  <dialog id="dlg-export" class="dialog wide">
+    <h2 data-i18n="export.title"></h2>
+    <div class="dlg-body" id="export-body"></div>
+    <div class="dlg-actions" id="export-actions"></div>
+  </dialog>
+
+  <dialog id="dlg-confirm" class="dialog">
+    <h2 id="cf-title"></h2>
+    <div class="dlg-body"><p id="cf-msg"></p></div>
+    <div class="dlg-actions">
+      <button class="btn text" id="cf-cancel" data-i18n="btn.cancel"></button>
+      <span class="spacer"></span>
+      <button class="btn text" id="cf-no"></button>
+      <button class="btn filled" id="cf-yes"></button>
+    </div>
+  </dialog>
+
+  <div id="snackbar" class="snackbar" role="status" aria-live="polite"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

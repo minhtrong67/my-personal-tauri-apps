@@ -6,7 +6,7 @@ import { useT } from '../lib/useT';
 
 function Section({ title, icon, children }: { title: string; icon: string; children: ReactNode }) {
   return (
-    <section className="mx-8 mb-4 rounded-3xl bg-surface-container p-6">
+    <section className="mx-8 mb-4 rounded-3xl bg-surface-container p-6 transition-shadow duration-300 hover:shadow-md">
       <h2 className="flex items-center gap-2 text-title-lg mb-4"><Icon name={icon} className="text-primary" fill />{title}</h2>
       <div className="space-y-5">{children}</div>
     </section>
@@ -28,7 +28,7 @@ export function SettingsView() {
   const update = useStore((x) => x.updateSettings);
   const st = useStore.getState();
   return (
-    <div className="h-full overflow-y-auto pb-8 animate-fade-in">
+    <div className="h-full overflow-y-auto pb-8 scroll-smooth stagger">
       <Section title={t('appearance')} icon="palette">
         <Row title={t('language')}>
           <Segmented value={s.language} onChange={(v) => update({ language: v })} options={[{ value: 'auto', label: t('langAuto') }, { value: 'en', label: 'English' }, { value: 'vi', label: 'Tiếng Việt' }]} />
@@ -100,7 +100,7 @@ export function SettingsView() {
         <div className="flex items-center gap-4">
           <Logo size={56} />
           <div>
-            <div className="text-title-md">Lumina 1.0.0</div>
+            <div className="text-title-md">Material Video Player 1.0.0</div>
             <div className="text-body-md text-on-surface-variant">{t('aboutTagline')}</div>
             <div className="text-body-md text-on-surface-variant">{t('author')}: <b className="text-on-surface">minhtrong67</b> · {t('withAi')}</div>
           </div>

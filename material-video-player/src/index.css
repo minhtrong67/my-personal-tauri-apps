@@ -116,4 +116,29 @@ video::-webkit-media-controls { display: none !important; }
 }
 
 .focus-ring:focus-visible { outline: 2px solid rgb(var(--md-primary)); outline-offset: 2px; }
+/* Loading skeleton + staggered entrance */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton {
+  background: linear-gradient(100deg, transparent 20%, rgb(var(--md-on-surface) / 0.09) 50%, transparent 80%) 0 0 / 200% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+.stagger > * { animation: rise 0.42s cubic-bezier(0.2, 0, 0, 1) both; }
+.stagger > *:nth-child(2) { animation-delay: 50ms; }
+.stagger > *:nth-child(3) { animation-delay: 100ms; }
+.stagger > *:nth-child(4) { animation-delay: 150ms; }
+.stagger > *:nth-child(5) { animation-delay: 200ms; }
+.stagger > *:nth-child(6) { animation-delay: 250ms; }
+.stagger > *:nth-child(n + 7) { animation-delay: 300ms; }
+.scroll-smooth { scroll-behavior: smooth; }
+button { -webkit-tap-highlight-color: transparent; }
+
 @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+@keyframes eq {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+.eq-bar { transform-origin: bottom; animation: eq 0.9s ease-in-out infinite; }

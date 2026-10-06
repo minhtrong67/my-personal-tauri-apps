@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { engine } from './engine';
 import * as api from './tauri';
 import { parseSubtitle } from './subtitles';
-import { makeThumb } from './thumbs';
+import { makeThumb, thumbSig } from './thumbs';
 import { tr, resolveLang, setActiveLang } from './i18n';
 import { basename, extOf, fmtTime, isSubPath, natural, pathKey, shuffled, stripExt } from './utils';
 import {
@@ -119,6 +119,7 @@ export interface State {
   toggleFullscreen: (on?: boolean) => Promise<void>;
   toggleMini: () => Promise<void>;
   screenshot: () => Promise<void>;
+  copyFrame: () => Promise<void>;
   setSleep: (minutes: number | 'video' | null) => void;
 
   updateSettings: (p: Partial<Settings>) => void;
@@ -407,7 +408,7 @@ export const useStore = create<State>((set, get) => {
     requestThumb: (f) => {
       const k = pathKey(f.path);
       const cur = get().thumbs[k];
-      if ((cur && cur.sig === String(f.size)) || thumbInflight.has(k)) return;
+      if ((cur && cur.sig === thumbSig(f.size)) || thumbInflight.has(k)) return;
       thumbInflight.add(k);
       thumbQueue.unshift({ path: f.path, size: f.size }); // newest request first = what the user is looking at
       const pump = () => {
@@ -427,7 +428,7 @@ export const useStore = create<State>((set, get) => {
             } catch {
               /* keep failure marker */
             }
-            set((st) => ({ thumbs: { ...st.thumbs, [key]: { thumb, dur, sig: String(job.size) } } }));
+            set((st) => ({ thumbs: { ...st.thumbs, [key]: { thumb, dur, sig: thumbSig(job.size) } } }));
             thumbInflight.delete(key);
             thumbActive--;
             pump();
@@ -487,7 +488,7 @@ export const useStore = create<State>((set, get) => {
       if (get().fullscreen) void get().toggleFullscreen(false);
       if (get().mini) void get().toggleMini();
       set({ screen: 'home', index: -1, queue: [], playing: false, ...resetPerVideo(), loading: false });
-      void win_title('Lumina');
+      void win_title('Material Video Player');
     },
     removeFromQueue: (i) =>
       set((s) => {
@@ -653,6 +654,22 @@ export const useStore = create<State>((set, get) => {
         get().showToast(tr('screenshotSaved'), tr('showInFolder'), () => void api.reveal(saved));
       } catch {
         get().showToast(tr('screenshotFailed'));
+      }
+    },
+    copyFrame: async () => {
+      const b64 = engine.screenshot();
+      if (!b64) {
+        get().showToast(tr('copyFailed'));
+        return;
+      }
+      try {
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': new Blob([bytes], { type: 'image/png' }) })]);
+        get().showToast(tr('frameCopied'));
+      } catch {
+        get().showToast(tr('copyFailed'));
       }
     },
     setSleep: (m) => {

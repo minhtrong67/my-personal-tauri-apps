@@ -37,19 +37,23 @@ export function TitleBar() {
   return (
     <div data-tauri-drag-region className="h-14 shrink-0 flex items-center gap-2 pl-4 pr-1 select-none">
       {screen === 'settings' && <IconButton icon="arrow_back" title={t('back')} onClick={() => go(prev === 'player' && !hasVideo ? 'home' : prev)} />}
-      <div className="flex items-center gap-2 pointer-events-none"><Logo size={26} /><span className="text-title-md">Lumina</span></div>
+      <div className="flex items-center gap-2 pointer-events-none"><Logo size={26} /><span className="text-title-md">Material Video Player</span></div>
       {screen === 'settings' && <span className="text-title-md text-on-surface-variant pointer-events-none">/ {t('settings')}</span>}
       <div data-tauri-drag-region className="flex-1 h-full" />
       {screen === 'home' && (
         <button
           type="button" title={`${t('refreshLibrary')} (F5)`} aria-label={t('refreshLibrary')} disabled={syncing}
           onClick={() => void useStore.getState().syncLibrary(false, true)}
-          className="w-10 h-10 rounded-full inline-flex items-center justify-center text-on-surface-variant hover:bg-on-surface/[.08] active:bg-on-surface/[.12] transition-colors focus-ring disabled:opacity-60 shrink-0"
+          className="group w-10 h-10 rounded-full inline-flex items-center justify-center text-on-surface-variant hover:bg-on-surface/[.08] active:bg-on-surface/[.12] active:scale-90 transition-all duration-200 focus-ring disabled:opacity-60 shrink-0"
         >
-          <Icon name="refresh" className={syncing ? 'animate-spin' : ''} />
+          <Icon name="refresh" className={syncing ? 'animate-spin' : 'transition-transform duration-500 ease-emphasized group-hover:rotate-180'} />
         </button>
       )}
-      {screen !== 'settings' && <IconButton icon="settings" title={t('settings')} onClick={() => go('settings')} />}
+      {screen !== 'settings' && (
+        <button type="button" title={t('settings')} aria-label={t('settings')} onClick={() => go('settings')} className="group w-10 h-10 rounded-full inline-flex items-center justify-center text-on-surface-variant hover:bg-on-surface/[.08] active:bg-on-surface/[.12] active:scale-90 transition-all duration-200 focus-ring shrink-0">
+          <Icon name="settings" className="transition-transform duration-500 ease-emphasized group-hover:rotate-90" />
+        </button>
+      )}
       <WindowControls />
     </div>
   );
