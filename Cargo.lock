@@ -2264,6 +2264,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "material-edit"
+version = "1.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-window-state",
+]
+
+[[package]]
 name = "material-file"
 version = "1.0.0"
 dependencies = [
@@ -2281,18 +2294,6 @@ dependencies = [
 name = "material-note"
 version = "1.0.0"
 dependencies = [
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
-]
-
-[[package]]
-name = "material-video-editor"
-version = "1.0.0"
-dependencies = [
- "base64 0.22.1",
  "serde",
  "serde_json",
  "tauri",
@@ -4241,6 +4242,21 @@ dependencies = [
  "tracing",
  "windows-sys 0.61.2",
  "zbus",
+]
+
+[[package]]
+name = "tauri-plugin-window-state"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d6815cab7b212f9cfe16a9d79d8d22f9e14159e4a9460f7dec1467167a008e3"
+dependencies = [
+ "bitflags 2.13.2",
+ "log",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
