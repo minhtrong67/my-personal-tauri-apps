@@ -1,5 +1,5 @@
 // Timeline UI: ruler, four tracks, clip drag / trim / reorder, snapping, zoom, playhead.
-import { state, on, emit, getMedia, totalDuration, layout, commit, select, findClip, makeClip, insertMain, addClip } from './store.js';
+import { state, on, emit, getMedia, totalDuration, layout, commit, select, selectMany, isSelected, selectedItems, findClip, makeClip, insertMain, addClip } from './store.js';
 import { seek } from './engine.js';
 import { nearestAspect } from './media.js';
 import { $, h, clamp, fmtTime, icon } from './util.js';
@@ -34,13 +34,13 @@ const timeFromEvent = (e) => (e.clientX - content.getBoundingClientRect().left -
 export function build() {
   const pps = state.pps;
   const dur = totalDuration();
-  const W = Math.max((dur + 6) * pps, scroll.clientWidth - LABEL_W - 4);
+  const W = Math.max(dur * pps + 80, scroll.clientWidth - LABEL_W - 4);
   content.style.width = W + LABEL_W + 'px';
   content.replaceChildren();
 
   const ruler = h('div', { class: 'tl-ruler', dataset: { role: 'ruler' } });
-  const steps = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
-  const step = steps.find((s) => s * pps >= 80) || 600;
+  const steps = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800, 3600];
+  const step = steps.find((s) => s * pps >= 80) || 3600;
   const sub = step / 5;
   for (let i = 0; i * sub <= W / pps; i++) {
     const s = Math.round(i * sub * 1000) / 1000;
@@ -51,10 +51,28 @@ export function build() {
   content.append(ruler);
 
   for (const r of ROWS) {
-    const row = h('div', { class: 'tl-row ' + r.track, dataset: { track: r.track }, style: { height: r.h + 'px' } },
+    // lanes: overlapping clips on text / overlay / audio rows are stacked instead of drawn on top of each other
+    const lanes = new Map();
+    let laneCount = 1;
+    if (r.track !== 'main') {
+      const ends = [];
+      for (const c of [...state[r.track]].sort((a, b) => a.start - b.start)) {
+        let l = ends.findIndex((e) => e <= c.start + 0.001);
+        if (l < 0) { l = ends.length; ends.push(0); }
+        ends[l] = c.start + c.dur;
+        lanes.set(c.id, l);
+      }
+      laneCount = Math.max(1, ends.length);
+    }
+    const row = h('div', { class: 'tl-row ' + r.track, dataset: { track: r.track }, style: { height: r.h * laneCount + (laneCount > 1 ? 2 * (laneCount - 1) : 0) + 'px' } },
       h('div', { class: 'tl-label' }, icon(r.ico)));
     if (r.track === 'main' && !state.main.length) row.append(h('div', { class: 'tl-hint', text: t('timeline.hint') }));
-    for (const c of state[r.track]) row.append(clipEl(r.track, c));
+    for (const c of state[r.track]) {
+      const el = clipEl(r.track, c);
+      const l = lanes.get(c.id) || 0;
+      if (laneCount > 1) { el.style.top = l * (r.h + 2) + 3 + 'px'; el.style.bottom = 'auto'; el.style.height = r.h - 6 + 'px'; }
+      row.append(el);
+    }
     content.append(row);
   }
   playhead = h('div', { class: 'playhead' }, h('i'));
@@ -65,7 +83,7 @@ export function build() {
 function clipEl(track, c) {
   const pps = state.pps;
   const m = c.mediaId ? getMedia(c.mediaId) : null;
-  const sel = state.sel && state.sel.id === c.id;
+  const sel = isSelected(c.id);
   const el = h('div', {
     class: `clip ${track}${sel ? ' sel' : ''}${m && m.offline ? ' offline' : ''}`,
     dataset: { id: c.id, track },
@@ -130,14 +148,80 @@ content.addEventListener('pointerdown', (e) => {
     const { track, id } = ce.dataset;
     const c = findClip(track, id);
     if (!c) return;
-    select(track, id);
+    if (e.ctrlKey || e.metaKey || e.shiftKey) { select(track, id, { toggle: true }); return; }
+    const group = state.multi.length > 1 && isSelected(id);
+    if (!group) select(track, id);
     const mode = e.target.classList.contains('hl') ? 'trimL' : e.target.classList.contains('hr') ? 'trimR' : 'move';
+    if (group) { if (mode === 'move') startGroupDrag(e, c); return; }
     startDrag(e, track, c, mode);
     return;
   }
-  select(null, null);
-  startScrub(e);
+  if (e.target.closest('.tl-ruler') || e.target.closest('.tl-label')) { select(null, null); startScrub(e); return; }
+  startMarquee(e);
 });
+
+/** Rubber-band selection on empty timeline space; a plain click still moves the playhead. */
+function startMarquee(e) {
+  const additive = e.ctrlKey || e.metaKey || e.shiftKey;
+  const base = additive ? state.multi.slice() : [];
+  const box = content.getBoundingClientRect();
+  const x0 = e.clientX, y0 = e.clientY;
+  let rect = null, moved = false;
+  const edge = scroll.getBoundingClientRect();
+  const onMove = (ev) => {
+    if (!moved && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return;
+    moved = true;
+    if (!rect) { rect = h('div', { class: 'marquee' }); content.append(rect); }
+    const l = Math.min(x0, ev.clientX), r = Math.max(x0, ev.clientX), tp = Math.min(y0, ev.clientY), bt = Math.max(y0, ev.clientY);
+    Object.assign(rect.style, { left: l - box.left + 'px', top: tp - box.top + 'px', width: r - l + 'px', height: bt - tp + 'px' });
+    const hit = [...content.querySelectorAll('.clip')].filter((el) => {
+      const b = el.getBoundingClientRect();
+      return b.left < r && b.right > l && b.top < bt && b.bottom > tp;
+    }).map((el) => ({ track: el.dataset.track, id: el.dataset.id }));
+    const merged = [...base];
+    for (const m of hit) if (!merged.some((x) => x.id === m.id)) merged.push(m);
+    selectMany(merged);
+    // auto-scroll near the edges
+    if (ev.clientX > edge.right - 24) scroll.scrollLeft += 18; else if (ev.clientX < edge.left + LABEL_W + 16) scroll.scrollLeft -= 18;
+  };
+  const onUp = (ev) => {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    if (rect) rect.remove();
+    if (!moved) { if (!additive) select(null, null); seek(clamp(timeFromEvent(ev), 0, 36000)); }
+  };
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+}
+
+/** Moves every selected clip together (not available for ripple-ordered main-track clips). */
+function startGroupDrag(e, lead) {
+  const items = selectedItems().filter((i) => i.track !== 'main');
+  if (!items.length || items.length !== selectedItems().length) return;
+  const startX = e.clientX;
+  const orig = items.map((i) => i.clip.start);
+  const minStart = Math.min(...orig);
+  const pts = snapPoints(null).filter((p) => !items.some((i) => Math.abs(i.clip.start - p) < 1e-6 || Math.abs(i.clip.start + i.clip.dur - p) < 1e-6));
+  let moved = false;
+  const li = Math.max(0, items.findIndex((i) => i.clip === lead));
+  const onMove = (ev) => {
+    if (!moved && Math.abs(ev.clientX - startX) < 3) return;
+    moved = true;
+    let dt = Math.max(-minStart, (ev.clientX - startX) / state.pps);
+    const snapped = snapVal(orig[li] + dt, pts);
+    if (state.snap && Math.abs(snapped - (orig[li] + dt)) < 8 / state.pps) dt = Math.max(-minStart, snapped - orig[li]);
+    items.forEach((i, k) => { i.clip.start = Math.max(0, orig[k] + dt); });
+    layout();
+    emit('change', 'live');
+  };
+  const onUp = () => {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    if (moved) { commit(); emit('inspect'); }
+  };
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+}
 
 function startScrub(e) {
   const go = (ev) => seek(clamp(timeFromEvent(ev), 0, 36000));
@@ -212,7 +296,7 @@ function reorderMain(c, center) {
 
 /* ---------------- adding media ---------------- */
 export function placeMedia(m, track, at) {
-  if (!m || m.offline) return false;
+  if (!m || m.offline) return null;
   if (m.type === 'audio') track = 'audio';
   else if (track !== 'main' && track !== 'overlay') track = 'main';
   const c = makeClip(m, track, 0);
@@ -229,17 +313,18 @@ export function placeMedia(m, track, at) {
     c.start = Math.max(0, at ?? state.t);
     addClip(track, c);
   }
-  return true;
+  return c;
 }
 
 /* ---------------- zoom ---------------- */
 const zoomInput = $('#tl-zoom');
-const ppsFromSlider = (v) => 10 * Math.pow(40, v / 100);
-const sliderFromPps = (p) => (Math.log(p / 10) / Math.log(40)) * 100;
+const MIN_PPS = 0.4, MAX_PPS = 400;
+const ppsFromSlider = (v) => MIN_PPS * Math.pow(MAX_PPS / MIN_PPS, v / 100);
+const sliderFromPps = (p) => (Math.log(p / MIN_PPS) / Math.log(MAX_PPS / MIN_PPS)) * 100;
 
 export function setPps(p, anchorX) {
   const old = state.pps;
-  p = clamp(p, 10, 400);
+  p = clamp(p, MIN_PPS, MAX_PPS);
   if (p === old) return;
   const ax = anchorX ?? scroll.clientWidth / 2;
   const timeAt = (scroll.scrollLeft + ax - LABEL_W) / old;
@@ -252,11 +337,14 @@ export function setPps(p, anchorX) {
 zoomInput.addEventListener('input', () => setPps(ppsFromSlider(+zoomInput.value)));
 $('#tl-zin').addEventListener('click', () => setPps(state.pps * 1.35));
 $('#tl-zout').addEventListener('click', () => setPps(state.pps / 1.35));
-$('#tl-fit').addEventListener('click', () => {
+/** Zooms so that the whole project fits the visible timeline. */
+export function fitTimeline() {
   const d = Math.max(totalDuration(), 2);
-  setPps((scroll.clientWidth - LABEL_W - 60) / d);
+  const target = clamp((scroll.clientWidth - LABEL_W - 90) / d, MIN_PPS, MAX_PPS);
+  if (Math.abs(target - state.pps) < 1e-6) build(); else setPps(target);
   scroll.scrollLeft = 0;
-});
+}
+$('#tl-fit').addEventListener('click', fitTimeline);
 scroll.addEventListener('wheel', (e) => {
   if (e.ctrlKey || e.metaKey) {
     e.preventDefault();
@@ -266,7 +354,10 @@ scroll.addEventListener('wheel', (e) => {
 
 /* ---------------- wiring ---------------- */
 on('change', () => build());
-on('select', () => build());
+on('select', () => {
+  // cheap: just toggle the selected class instead of rebuilding the whole timeline
+  content.querySelectorAll('.clip').forEach((el) => el.classList.toggle('sel', isSelected(el.dataset.id)));
+});
 on('reset', () => { scroll.scrollLeft = 0; build(); });
 on('seek', () => updatePlayhead(!state.playing));
 on('time', () => updatePlayhead(state.playing));

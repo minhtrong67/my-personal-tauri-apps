@@ -29,6 +29,19 @@ export async function pickOpenPath(filters) {
   return p ? String(p) : null;
 }
 
+/** Native folder picker (desktop only). */
+export async function pickDirectory(defaultPath) {
+  if (!T) return null;
+  const p = await T.dialog.open({ directory: true, multiple: false, defaultPath: defaultPath || undefined });
+  return p ? String(p) : null;
+}
+
+/** true when a file already exists at `path` (desktop). */
+export async function fileExists(path) {
+  if (!T) return false;
+  try { return (await invoke('file_size', { path })) >= 0; } catch { return false; }
+}
+
 /** Native multi-file picker for media. Returns an array of paths (Tauri only). */
 export async function pickMediaPaths(single = false) {
   if (!T) return [];

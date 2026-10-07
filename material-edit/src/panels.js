@@ -8,6 +8,11 @@ import { t } from './i18n.js';
 
 const body = $('#left-body');
 let tab = 'media';
+/** Media-library multi selection (ids). */
+const msel = new Set();
+export let zone = 'timeline';
+const selectedMedia = () => state.media.filter((m) => msel.has(m.id));
+
 let handlers = { importFiles: () => {}, toast: () => {}, locate: () => {} };
 export const setPanelHandlers = (o) => Object.assign(handlers, o);
 
@@ -19,16 +24,78 @@ $('#rail').addEventListener('click', (e) => {
 });
 
 
+function placeAll(list, track, at) {
+  let pos = at;
+  for (const m of list) {
+    const c = placeMedia(m, track, pos ?? undefined);
+    if (c && pos != null && c.dur) pos += c.dur;
+  }
+}
+
 export function mediaMenu(m) {
-  const online = !m.offline;
+  if (!msel.has(m.id)) { msel.clear(); msel.add(m.id); markSel(); }
+  const list = selectedMedia();
+  const many = list.length > 1;
+  const usable = list.filter((x) => !x.offline);
+  const overlayable = usable.filter((x) => x.type !== 'audio');
   return [
-    { label: t('media.add'), icon: 'plus', run: () => placeMedia(m, 'main'), disabled: !online },
-    m.type !== 'audio' ? { label: t('media.addOverlay'), icon: 'layers', run: () => placeMedia(m, 'overlay'), disabled: !online } : null,
+    { label: many ? t('media.addN', { n: usable.length }) : t('media.add'), icon: 'plus', run: () => placeAll(usable, 'main'), disabled: !usable.length },
+    overlayable.length ? { label: many ? t('media.addOverlayN', { n: overlayable.length }) : t('media.addOverlay'), icon: 'layers', run: () => placeAll(overlayable, 'overlay') } : null,
     '-',
-    { label: t('media.locate'), icon: 'link', run: () => handlers.locate(m) },
-    { label: t('btn.remove'), icon: 'trash', danger: true, run: () => removeMediaAndClips(m.id) },
+    { label: t('ctx.selectAllMedia'), icon: 'layers', kbd: 'Ctrl+A', run: selectAllMedia },
+    many ? { label: t('ctx.deselect'), icon: 'close', run: () => { msel.clear(); markSel(); } } : null,
+    '-',
+    !many ? { label: t('media.locate'), icon: 'link', run: () => handlers.locate(m) } : null,
+    { label: many ? t('media.removeN', { n: list.length }) : t('btn.remove'), icon: 'trash', danger: true, run: () => list.forEach((x) => removeMediaAndClips(x.id)) },
   ];
 }
+
+function markSel() {
+  body.querySelectorAll('.media-card').forEach((el) => el.classList.toggle('sel', msel.has(el.dataset.mediaId)));
+}
+export function selectAllMedia() { state.media.forEach((m) => msel.add(m.id)); markSel(); }
+export function clearMediaSel() { msel.clear(); markSel(); }
+/** Deletes the selected library items (returns false when nothing is selected there). */
+export function deleteSelectedMedia() {
+  const list = selectedMedia();
+  if (zone !== 'media' || !list.length) return false;
+  list.forEach((x) => removeMediaAndClips(x.id));
+  msel.clear();
+  return true;
+}
+export const mediaSelectedCount = () => selectedMedia().length;
+
+/** Rubber-band selection over the media grid. */
+body.addEventListener('pointerdown', (e) => {
+  zone = 'media';
+  if (e.button !== 0 || e.target.closest('.media-card, button, .btn, input, select, .preset')) return;
+  if (tab !== 'media' || !body.querySelector('.media-grid')) return;
+  const additive = e.ctrlKey || e.metaKey || e.shiftKey;
+  const base = additive ? new Set(msel) : new Set();
+  const box = body.getBoundingClientRect();
+  const x0 = e.clientX, y0 = e.clientY;
+  let rect = null, moved = false;
+  const onMove = (ev) => {
+    if (!moved && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return;
+    moved = true;
+    if (!rect) { rect = h('div', { class: 'marquee fixed' }); document.body.append(rect); }
+    const l = Math.min(x0, ev.clientX), r = Math.max(x0, ev.clientX), tp = Math.min(y0, ev.clientY), bt = Math.max(y0, ev.clientY);
+    Object.assign(rect.style, { left: l + 'px', top: tp + 'px', width: r - l + 'px', height: bt - tp + 'px' });
+    msel.clear(); base.forEach((id) => msel.add(id));
+    body.querySelectorAll('.media-card').forEach((el) => {
+      const b = el.getBoundingClientRect();
+      if (b.left < r && b.right > l && b.top < bt && b.bottom > tp && b.top < box.bottom && b.bottom > box.top) msel.add(el.dataset.mediaId);
+    });
+    markSel();
+  };
+  const onUp = () => {
+    window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
+    if (rect) rect.remove();
+    if (!moved && !additive) { msel.clear(); markSel(); }
+  };
+  window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
+});
+document.addEventListener('pointerdown', (e) => { if (!body.contains(e.target) && e.target.closest) { if (e.target.closest('#timeline, #tl-scroll')) zone = 'timeline'; else if (e.target.closest('#stage, #inspector')) zone = 'timeline'; } }, true);
 
 /** Pointer-based drag from the library onto the timeline / preview (works with native file drops enabled). */
 function startMediaDrag(e, m, card) {
@@ -65,7 +132,10 @@ function startMediaDrag(e, m, card) {
     if (ghost) ghost.remove();
     markDropRow(null);
     stage.classList.remove('drop-target');
-    if (ev.type !== 'pointercancel' && target) placeMedia(m, target.track, target.time ?? undefined);
+    if (ev.type !== 'pointercancel' && target) {
+      const group = msel.has(m.id) && msel.size > 1 ? selectedMedia().filter((x) => !x.offline) : [m];
+      if (group.length > 1) placeAll(group, target.track, target.time ?? undefined); else placeMedia(m, target.track, target.time ?? undefined);
+    }
   };
   window.addEventListener('pointermove', move);
   window.addEventListener('pointerup', up);
@@ -84,8 +154,14 @@ function mediaTab() {
   const grid = h('div', { class: 'media-grid' });
   for (const m of state.media) {
     const card = h('div', {
-      class: 'media-card' + (m.offline ? ' offline' : ''), title: m.name, dataset: { mediaId: m.id },
-      onpointerdown(e) { if (e.button === 0 && !m.offline && !e.target.closest('.card-actions')) startMediaDrag(e, m, card); },
+      class: 'media-card' + (m.offline ? ' offline' : '') + (msel.has(m.id) ? ' sel' : ''), title: m.name, dataset: { mediaId: m.id },
+      onpointerdown(e) {
+        if (e.button !== 0 || e.target.closest('.card-actions')) return;
+        zone = 'media';
+        if (e.ctrlKey || e.metaKey || e.shiftKey) { if (msel.has(m.id)) msel.delete(m.id); else msel.add(m.id); markSel(); return; }
+        if (!msel.has(m.id)) { msel.clear(); msel.add(m.id); markSel(); }
+        if (!m.offline) startMediaDrag(e, m, card);
+      },
       ondblclick() { if (m.offline) handlers.locate(m); else placeMedia(m, 'main'); },
       oncontextmenu(e) { e.preventDefault(); showMenu(e.clientX, e.clientY, mediaMenu(m)); },
     });
@@ -95,6 +171,7 @@ function mediaTab() {
     if (m.type === 'audio' && m.wave) { thumb.style.backgroundImage = `url(${m.wave})`; thumb.style.backgroundSize = '100% 70%'; thumb.style.backgroundRepeat = 'no-repeat'; thumb.style.backgroundPosition = 'center'; }
     if (m.type !== 'image') thumb.append(h('span', { class: 'dur', text: fmtTime(m.duration, false) }));
     thumb.append(h('span', { class: 'kind' }, icon(m.type === 'video' ? 'video' : m.type === 'audio' ? 'music' : 'image')));
+    if (m.proxyP != null) thumb.append(h('span', { class: 'proxy-chip', text: t('media.optimizing', { p: Math.round(m.proxyP * 100) }) }));
     const actions = h('div', { class: 'card-actions' },
       m.offline ? null : h('button', { class: 'icon-btn sm', title: t('media.add'), onclick(e) { e.stopPropagation(); placeMedia(m, 'main'); } }, icon('plus')),
       m.type !== 'audio' && !m.offline ? h('button', { class: 'icon-btn sm', title: t('media.addOverlay'), onclick(e) { e.stopPropagation(); placeMedia(m, 'overlay'); } }, icon('layers')) : null,
@@ -217,3 +294,14 @@ on('select', () => { if (tab === 'effects' || tab === 'transitions') render(); }
 on('history', () => { if (tab === 'effects' || tab === 'transitions') render(); });
 render();
 export { getMedia };
+
+/** Live progress chip while a preview proxy is being prepared (no full re-render). */
+on('proxy', (m) => {
+  const card = body.querySelector(`.media-card[data-media-id="${m.id}"]`);
+  if (!card) return;
+  const thumb = card.querySelector('.thumb');
+  let chip = thumb && thumb.querySelector('.proxy-chip');
+  if (m.proxyP == null) { if (chip) chip.remove(); return; }
+  if (!chip && thumb) { chip = h('span', { class: 'proxy-chip' }); thumb.append(chip); }
+  if (chip) chip.textContent = t('media.optimizing', { p: Math.round(m.proxyP * 100) });
+});

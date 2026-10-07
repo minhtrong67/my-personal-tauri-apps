@@ -1,6 +1,6 @@
 // Higher-level editing operations: clipboard, trim to playhead, mute, edit-point jumps and
 // "match video length to audio" (loops short videos, stretches images, trims long ones).
-import { state, emit, layout, commit, select, selClip, totalDuration, deleteSelected, makeClip, getMedia } from './store.js';
+import { state, emit, layout, commit, select, selectMany, selClip, selectedItems, totalDuration, deleteSelected, makeClip, getMedia } from './store.js';
 import { uid } from './util.js';
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -8,12 +8,13 @@ const EPS = 0.04;
 
 /* ---------------- clipboard ---------------- */
 let board = null;
-export const hasClipboard = () => !!board;
+export const hasClipboard = () => !!(board && board.length);
 
 export function copySelected() {
-  const c = selClip();
-  if (!c) return false;
-  board = { track: state.sel.track, clip: clone(c) };
+  const items = selectedItems();
+  if (!items.length) return false;
+  const t0 = Math.min(...items.map((i) => i.clip.start));
+  board = items.map(({ track, clip }) => ({ track, clip: clone(clip), off: clip.start - t0 }));
   emit('clipboard');
   return true;
 }
@@ -25,22 +26,24 @@ export function cutSelected() {
 }
 
 export function pasteAtPlayhead() {
-  if (!board) return false;
-  const { track } = board;
-  const c = clone(board.clip);
-  c.id = uid();
-  if (track === 'main') {
-    // after the clip under the playhead (or at the end)
-    let idx = state.main.findIndex((x) => state.t >= x.start && state.t < x.start + x.dur);
-    idx = idx < 0 ? state.main.length : idx + 1;
-    c.trans = { type: 'none', dur: c.trans ? c.trans.dur : 0.6 };
-    state.main.splice(idx, 0, c);
-  } else {
-    c.start = Math.max(0, state.t);
-    state[track].push(c);
+  if (!board || !board.length) return false;
+  const made = [];
+  let idx = state.main.findIndex((x) => state.t >= x.start && state.t < x.start + x.dur);
+  idx = idx < 0 ? state.main.length : idx + 1;
+  for (const { track, clip, off } of board) {
+    const c = clone(clip);
+    c.id = uid();
+    if (track === 'main') {
+      c.trans = { type: 'none', dur: c.trans ? c.trans.dur : 0.6 };
+      state.main.splice(idx++, 0, c);
+    } else {
+      c.start = Math.max(0, state.t + off);
+      state[track].push(c);
+    }
+    made.push({ track, id: c.id });
   }
   layout();
-  select(track, c.id);
+  selectMany(made);
   commit();
   emit('change');
   return true;
@@ -83,6 +86,7 @@ export function trimToPlayhead(side) {
 
 /** Deletes the selection and closes the gap on its track. */
 export function rippleDelete() {
+  if (selectedItems().length > 1) { deleteSelected(); return true; }
   const c = selClip();
   if (!c) return false;
   const { track } = state.sel;
@@ -95,9 +99,10 @@ export function rippleDelete() {
 }
 
 export function toggleMute() {
-  const c = selClip();
-  if (!c || !('muted' in c)) return false;
-  c.muted = !c.muted;
+  const items = selectedItems().filter((i) => 'muted' in i.clip);
+  if (!items.length) return false;
+  const to = !items.every((i) => i.clip.muted);
+  for (const i of items) i.clip.muted = to;
   commit();
   emit('change');
   emit('inspect');
@@ -105,10 +110,12 @@ export function toggleMute() {
 }
 
 export function resetTransform() {
-  const c = selClip();
-  if (!c) return false;
-  if (state.sel.track === 'text') Object.assign(c, { x: 0.5, y: 0.5, rot: 0 });
-  else Object.assign(c, { scale: state.sel.track === 'overlay' ? 0.5 : 1, x: 0, y: 0, rot: 0, flipH: false, flipV: false });
+  const items = selectedItems().filter((i) => i.track !== 'audio');
+  if (!items.length) return false;
+  for (const { track, clip: c } of items) {
+    if (track === 'text') Object.assign(c, { x: 0.5, y: 0.5, rot: 0 });
+    else Object.assign(c, { scale: track === 'overlay' ? 0.5 : 1, x: 0, y: 0, rot: 0, flipH: false, flipV: false });
+  }
   commit();
   emit('change');
   emit('inspect');
@@ -228,3 +235,20 @@ export function trimAudioToVideo(audio = pickAudio()) {
 }
 
 export { makeClip, getMedia };
+
+/* ---------------- selection helpers ---------------- */
+const ref = (track, c) => ({ track, id: c.id });
+export const selectAllClips = () => selectMany(['main', 'overlay', 'text', 'audio'].flatMap((tr) => state[tr].map((c) => ref(tr, c))));
+export const selectTrackClips = (track) => selectMany(state[track].map((c) => ref(track, c)));
+/** dir > 0: this clip and everything after it on the track; dir < 0: everything up to and including it. */
+export function selectAround(track, clip, dir) {
+  selectMany(state[track].filter((c) => (dir > 0 ? c.start >= clip.start - 1e-6 : c.start <= clip.start + 1e-6)).map((c) => ref(track, c)));
+}
+export function selectSameMedia(clip) {
+  selectMany(['main', 'overlay', 'audio'].flatMap((tr) => state[tr].filter((c) => c.mediaId === clip.mediaId).map((c) => ref(tr, c))));
+}
+export function invertTrackSelection(track) {
+  const on = new Set(selectedItems().map((i) => i.clip.id));
+  selectMany(state[track].filter((c) => !on.has(c.id)).map((c) => ref(track, c)));
+}
+export const clearSelection = () => select(null, null);

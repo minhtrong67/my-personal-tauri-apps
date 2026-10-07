@@ -6,7 +6,8 @@ export const DEFAULTS = {
   start: 'remember', // window on launch: remember | maximized | fullscreen
   layout: { left: 340, right: 320, tl: 296 },
   home: { view: 'grid', sort: 'recent' },
-  export: { format: '', res: '1080', fps: '30', q: 'high', mode: 'fast' },
+  proxy: true, // smooth-preview proxies for 2K/4K videos
+  export: { format: '', res: '1080', fps: '30', q: 'high', mode: 'fast', dir: '', lastDir: '' },
 };
 
 export const settings = JSON.parse(JSON.stringify(DEFAULTS));

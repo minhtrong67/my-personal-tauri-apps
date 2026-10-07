@@ -5,6 +5,7 @@ const u32 = (d, o) => d.getUint32(o);
 const u64 = (d, o) => d.getUint32(o) * 4294967296 + d.getUint32(o + 4);
 const fourcc = (d, o) => String.fromCharCode(d.getUint8(o), d.getUint8(o + 1), d.getUint8(o + 2), d.getUint8(o + 3));
 const hex = (n, w = 2) => n.toString(16).padStart(w, '0');
+const dec = (n) => String(n).padStart(2, '0');
 
 /** Range reader with a small read-ahead window. */
 export class RangeReader {
@@ -65,12 +66,12 @@ function codecString(fmt, d, cfg, bytes) {
     return `${fmt}.${space}${profile}.${rev.toString(16)}.${tier}${b[12]}${cons ? '.' + cons : ''}`;
   }
   if (fmt === 'vp09') { // vpcC: 4 bytes version/flags, profile, level, bitDepth<<4|...
-    return `vp09.${hex(bytes[4])}.${hex(bytes[5])}.${hex(bytes[6] >> 4)}`;
+    return `vp09.${dec(bytes[4])}.${dec(bytes[5])}.${dec(bytes[6] >> 4)}`;
   }
   if (fmt === 'av01') {
     const prof = bytes[1] >> 5, lvl = bytes[1] & 31, tier = bytes[2] >> 7 ? 'H' : 'M';
     const bd = (bytes[2] >> 6) & 1 ? ((bytes[2] >> 5) & 1 ? 12 : 10) : 8;
-    return `av01.${prof}.${hex(lvl)}${tier}.${hex(bd)}`;
+    return `av01.${prof}.${dec(lvl)}${tier}.${dec(bd)}`;
   }
   return null;
 }
@@ -106,10 +107,12 @@ export async function parseMp4(reader) {
     const stsd = find(d, stbl, 'stsd');
     const ent = stsd.body + 8;
     const fmt = fourcc(d, ent + 4);
-    const width = d.getUint16(ent + 8 + 16), height = d.getUint16(ent + 8 + 18);
+    const width = d.getUint16(ent + 32), height = d.getUint16(ent + 34);
     let cfgBox = null, desc = null;
+    let colr = null;
     for (const b of boxes(d, ent + 8 + 78, ent + u32(d, ent))) {
-      if (['avcC', 'hvcC', 'vpcC', 'av1C'].includes(b.type)) { cfgBox = b; break; }
+      if (['avcC', 'hvcC', 'vpcC', 'av1C'].includes(b.type)) cfgBox = b;
+      else if (b.type === 'colr' && fourcc(d, b.body) === 'nclx') colr = { p: d.getUint16(b.body + 4), t: d.getUint16(b.body + 6), m: d.getUint16(b.body + 8), full: !!(d.getUint8(b.body + 10) & 0x80) };
     }
     if (!cfgBox) return null;
     const bytes = new Uint8Array(buf.buffer, buf.byteOffset + cfgBox.body, cfgBox.end - cfgBox.body);
@@ -122,7 +125,7 @@ export async function parseMp4(reader) {
     let rotation = 0;
     const tkhd = find(d, trak, 'tkhd');
     if (tkhd) {
-      const o = tkhd.body + (d.getUint8(tkhd.body) ? 48 : 36);
+      const o = tkhd.body + (d.getUint8(tkhd.body) ? 52 : 40);
       const a = d.getInt32(o) / 65536, b2 = d.getInt32(o + 4) / 65536;
       rotation = ((Math.round((Math.atan2(b2, a) * 180) / Math.PI) % 360) + 360) % 360;
     }
@@ -176,7 +179,13 @@ export async function parseMp4(reader) {
     // presentation order → for "latest frame ≤ time" lookups
     const order = Array.from({ length: n }, (_, i) => i).sort((x, y) => cts[x] - cts[y]);
     const swap = rotation === 90 || rotation === 270;
-    return { codec, desc, width, height, timescale, rotation, n, sizes, dts, cts, keys, offsets, order, dispW: swap ? height : width, dispH: swap ? width : height };
+    // colour: use the file's tags; untagged video follows the same rule browsers use (HD → BT.709, SD → BT.601)
+    const P = { 1: 'bt709', 5: 'bt470bg', 6: 'smpte170m', 9: 'bt2020' }, T = { 1: 'bt709', 6: 'smpte170m', 13: 'iec61966-2-1', 16: 'pq', 18: 'hlg' }, Mx = { 1: 'bt709', 5: 'bt470bg', 6: 'smpte170m', 9: 'bt2020-ncl' };
+    const hd = height >= 720 || width >= 1280;
+    const colorSpace = colr && P[colr.p] && Mx[colr.m]
+      ? { primaries: P[colr.p], transfer: T[colr.t] || 'bt709', matrix: Mx[colr.m], fullRange: colr.full }
+      : { primaries: hd ? 'bt709' : 'smpte170m', transfer: hd ? 'bt709' : 'smpte170m', matrix: hd ? 'bt709' : 'smpte170m', fullRange: false };
+    return { colorSpace, codec, desc, width, height, timescale, rotation, n, sizes, dts, cts, keys, offsets, order, dispW: swap ? height : width, dispH: swap ? width : height };
   }
   return null;
 }
@@ -215,7 +224,7 @@ export class SeqDecoder {
       },
       error: (e) => { this.error = e; this._wake(); },
     });
-    this.decoder.configure({ codec: this.i.codec, codedWidth: this.i.width, codedHeight: this.i.height, description: this.i.desc || undefined, optimizeForLatency: false });
+    this.decoder.configure({ codec: this.i.codec, codedWidth: this.i.width, codedHeight: this.i.height, description: this.i.desc || undefined, colorSpace: this.i.colorSpace, optimizeForLatency: false });
   }
   _wake() { if (this.waiter) { const w = this.waiter; this.waiter = null; w(); } }
   _wait() { return new Promise((res) => { this.waiter = res; setTimeout(res, 2000); }); }

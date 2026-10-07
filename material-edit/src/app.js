@@ -10,7 +10,7 @@ import * as engine from './engine.js';
 import * as E from './edit.js';
 import { importFiles, importPaths, relinkPath, restoreMedia, kindOf, kindOfName, releaseAllMedia, removeMedia } from './media.js';
 import { placeMedia, build as buildTimeline } from './timeline.js';
-import { setPanelHandlers } from './panels.js';
+import { setPanelHandlers, deleteSelectedMedia, selectAllMedia, clearMediaSel, zone as mediaZone } from './panels.js';
 import './inspector.js';
 import { applyLayout, resetLayout } from './layout.js';
 import { showMenu, closeMenu } from './contextmenu.js';
@@ -18,7 +18,7 @@ import { setMenuApi, previewMenu } from './menus.js';
 import { initShortcuts, renderShortcutsDialog } from './shortcuts.js';
 import { initHome, showHome, hideHome, isHomeOpen, renderHome, refreshHome } from './home.js';
 import {
-  inTauri, pickSavePath, pickOpenPath, pickMediaPaths, readText, writeText, currentWindow, onFileDrop,
+  inTauri, pickDirectory, pickSavePath, pickOpenPath, pickMediaPaths, readText, writeText, currentWindow, onFileDrop,
   libRead, libWrite, setWindowFullscreen, isWindowFullscreen,
 } from './io.js';
 import { openExport, setExportToast } from './exporter.js';
@@ -152,9 +152,19 @@ $('#btn-settings').addEventListener('click', openSettings);
 $('#home-settings').addEventListener('click', openSettings);
 
 $('#sel-start').value = settings.start;
+$('#chk-proxy').checked = !!settings.proxy;
+$('#chk-proxy').addEventListener('change', (e) => { settings.proxy = e.target.checked; saveSettings(); });
+$('#sec-exdir').hidden = !inTauri;
+const showExDir = () => { $('#inp-exdir').value = settings.export.dir || ''; $('#btn-exdir-clear').hidden = !settings.export.dir; };
+showExDir();
+$('#btn-exdir').addEventListener('click', async () => {
+  const d = await pickDirectory(settings.export.dir || settings.export.lastDir);
+  if (d) { settings.export.dir = d; saveSettings(); showExDir(); }
+});
+$('#btn-exdir-clear').addEventListener('click', () => { settings.export.dir = ''; saveSettings(); showExDir(); });
 $('#sel-start').addEventListener('change', (e) => { settings.start = e.target.value; saveSettings(); });
 $('#btn-reset-layout').addEventListener('click', () => { resetLayout(); toast(t('settings.resetDone')); });
-$('#btn-reset-export').addEventListener('click', () => { settings.export = { ...DEFAULTS.export }; saveSettings(); toast(t('settings.resetDone')); });
+$('#btn-reset-export').addEventListener('click', () => { settings.export = { ...DEFAULTS.export }; saveSettings(); showExDir(); toast(t('settings.resetDone')); });
 
 /* ------------------------------------------------------------------ */
 /*  Title, save status, transport UI                                  */
@@ -241,6 +251,7 @@ on('dirty', updateChrome);
 on('history', () => { updateChrome(); scheduleAutosave(); });
 on('change', (kind) => { updateChrome(); if (kind !== 'live') { fitStage(); if (state.dirty) scheduleAutosave(); } });
 on('reset', () => { nameInput.value = state.name; updateChrome(); fitStage(); });
+on('clearsel', () => { clearMediaSel(); E.clearSelection(); });
 const seekEl = $('#tp-seek');
 let seekDrag = false;
 const syncTime = () => {
@@ -628,11 +639,12 @@ const COMMANDS = {
   toStart: () => engine.seek(0),
   toEnd: () => engine.seek(totalDuration()),
   fullscreen: toggleFullscreen,
-  escape: () => { if (fsOn) setFullscreen(false); else if (!fileMenu.hidden) toggleMenu(false); },
+  escape: () => { if (fsOn) setFullscreen(false); else if (!fileMenu.hidden) toggleMenu(false); else { clearMediaSel(); E.clearSelection(); } },
+  selectAll: () => { if (mediaZone === 'media') selectAllMedia(); else E.selectAllClips(); },
   split: () => { if (!splitAt()) toast(t('toast.splitNone')); },
   trimLeft: () => { if (!E.trimToPlayhead('left')) toast(t('toast.splitNone')); },
   trimRight: () => { if (!E.trimToPlayhead('right')) toast(t('toast.splitNone')); },
-  delete: deleteSelected,
+  delete: () => { if (!deleteSelectedMedia()) deleteSelected(); },
   rippleDelete: E.rippleDelete,
   duplicate: duplicateSelected,
   copy: E.copySelected,

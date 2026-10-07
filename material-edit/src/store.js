@@ -24,12 +24,20 @@ export const defaultFilters = () => ({ brightness: 100, contrast: 100, saturate:
 export const state = {
   id: uid(), cover: null, name: '', aspect: '16:9', fps: 30, bg: '#000000',
   media: [], main: [], overlay: [], text: [], audio: [],
-  sel: null, t: 0, playing: false, pps: 80, snap: true, dirty: false, projectPath: null,
+  sel: null, multi: [], t: 0, playing: false, pps: 80, snap: true, dirty: false, projectPath: null,
 };
 
 export const getMedia = (id) => state.media.find((m) => m.id === id);
 export const findClip = (track, id) => state[track].find((c) => c.id === id);
 export const selClip = () => (state.sel ? findClip(state.sel.track, state.sel.id) : null);
+/** Every selected clip as { track, clip } (multi-selection aware). */
+export function selectedItems() {
+  const list = state.multi.length ? state.multi : state.sel ? [state.sel] : [];
+  const out = [];
+  for (const s of list) { const clip = findClip(s.track, s.id); if (clip) out.push({ track: s.track, clip }); }
+  return out;
+}
+export const isSelected = (id) => state.multi.some((s) => s.id === id) || (state.sel && state.sel.id === id);
 export const clipEnd = (c) => c.start + c.dur;
 export const allMediaClips = () => [...state.main, ...state.overlay, ...state.audio];
 export const isEmpty = () => !state.main.length && !state.overlay.length && !state.text.length && !state.audio.length;
@@ -92,6 +100,8 @@ export const canRedo = () => hist.idx < hist.stack.length - 1;
 function restore(s) {
   Object.assign(state, JSON.parse(s));
   if (state.sel && !findClip(state.sel.track, state.sel.id)) state.sel = null;
+  state.multi = state.multi.filter((m) => findClip(m.track, m.id));
+  if (!state.multi.length && state.sel) state.multi = [state.sel];
   layout();
   markDirty(true);
   emit('change');
@@ -102,10 +112,26 @@ export function undo() { if (canUndo()) restore(hist.stack[--hist.idx]); }
 export function redo() { if (canRedo()) restore(hist.stack[++hist.idx]); }
 
 /* ---------------- selection ---------------- */
-export function select(track, id) {
+export function select(track, id, opts = {}) {
   const next = track && id ? { track, id } : null;
-  if (JSON.stringify(next) === JSON.stringify(state.sel)) return;
+  if (opts.toggle && next) {
+    const i = state.multi.findIndex((m) => m.id === id);
+    if (i >= 0) { state.multi.splice(i, 1); state.sel = state.multi[state.multi.length - 1] || null; }
+    else { if (state.sel && !state.multi.length) state.multi = [state.sel]; state.multi.push(next); state.sel = next; }
+    emit('select');
+    return;
+  }
+  if (JSON.stringify(next) === JSON.stringify(state.sel) && state.multi.length <= 1) return;
   state.sel = next;
+  state.multi = next ? [next] : [];
+  emit('select');
+}
+
+/** Selects several clips at once ([{track,id}]); the last one becomes the primary selection. */
+export function selectMany(list) {
+  const items = list.filter((m) => findClip(m.track, m.id));
+  state.multi = items;
+  state.sel = items.length ? items[items.length - 1] : null;
   emit('select');
 }
 
@@ -150,8 +176,24 @@ export function insertMain(clip, index = state.main.length) {
   emit('change');
 }
 
+/** Moves a new text clip to a free vertical slot so texts that share a time range never stack on top of each other. */
+function placeTextFree(c) {
+  const gapOf = (o) => Math.max(0.1, ((o.size || 72) * 1.5) / 1080);
+  const busy = state.text.filter((o) => o !== c && o.start < c.start + c.dur && o.start + o.dur > c.start);
+  const clash = (y) => busy.some((o) => Math.abs(o.y - y) < Math.max(gapOf(o), gapOf(c)) * 0.95 && Math.abs(o.x - c.x) < 0.45);
+  if (!clash(c.y)) return;
+  const step = gapOf(c);
+  for (let k = 1; k < 14; k++) {
+    for (const dir of [1, -1]) {
+      const y = +(c.y + dir * k * step).toFixed(3);
+      if (y > 0.06 && y < 0.94 && !clash(y)) { c.y = y; return; }
+    }
+  }
+}
+
 export function addClip(track, clip) {
   if (track === 'main') return insertMain(clip);
+  if (track === 'text') placeTextFree(clip);
   state[track].push(clip);
   select(track, clip.id);
   commit();
@@ -163,6 +205,18 @@ export function removeClip(track, id) {
   if (i < 0) return;
   state[track].splice(i, 1);
   if (state.sel && state.sel.id === id) state.sel = null;
+  state.multi = state.multi.filter((m) => m.id !== id);
+  layout();
+  commit();
+  emit('change');
+  emit('select');
+}
+
+/** Removes many clips with a single undo step. */
+export function removeMany(items) {
+  const ids = new Set(items.map((i) => i.clip.id));
+  for (const tr of TRACKS) state[tr] = state[tr].filter((c) => !ids.has(c.id));
+  state.sel = null; state.multi = [];
   layout();
   commit();
   emit('change');
@@ -170,25 +224,31 @@ export function removeClip(track, id) {
 }
 
 export function deleteSelected() {
-  if (state.sel) removeClip(state.sel.track, state.sel.id);
+  const items = selectedItems();
+  if (items.length > 1) removeMany(items);
+  else if (items.length) removeClip(items[0].track, items[0].clip.id);
 }
 
 export function duplicateSelected() {
-  const c = selClip();
-  if (!c) return;
-  const { track } = state.sel;
-  const copy = JSON.parse(JSON.stringify(c));
-  copy.id = uid();
-  if (track === 'main') {
-    const i = state.main.indexOf(c);
-    if (copy.trans) copy.trans = { type: 'none', dur: copy.trans.dur };
-    state.main.splice(i + 1, 0, copy);
-  } else {
-    copy.start = c.start + c.dur;
-    state[track].push(copy);
+  const items = selectedItems();
+  if (!items.length) return;
+  const created = [];
+  // main track: each copy goes right after its original; other tracks: right after the clip
+  for (const { track, clip: c } of items) {
+    const copy = JSON.parse(JSON.stringify(c));
+    copy.id = uid();
+    if (track === 'main') {
+      const i = state.main.indexOf(c);
+      if (copy.trans) copy.trans = { type: 'none', dur: copy.trans.dur };
+      state.main.splice(i + 1, 0, copy);
+    } else {
+      copy.start = c.start + c.dur;
+      state[track].push(copy);
+    }
+    created.push({ track, clip: copy });
   }
   layout();
-  select(track, copy.id);
+  selectMany(created.map((k) => ({ track: k.track, id: k.clip.id })));
   commit();
   emit('change');
 }
@@ -238,7 +298,7 @@ export function toProject(extra = {}) {
 }
 
 export function resetProject() {
-  Object.assign(state, { id: uid(), name: '', aspect: '16:9', fps: 30, bg: '#000000', media: [], main: [], overlay: [], text: [], audio: [], sel: null, t: 0, playing: false, projectPath: null });
+  Object.assign(state, { id: uid(), name: '', aspect: '16:9', fps: 30, bg: '#000000', media: [], main: [], overlay: [], text: [], audio: [], sel: null, multi: [], t: 0, playing: false, projectPath: null });
   layout();
   resetHistory();
   markDirty(false);

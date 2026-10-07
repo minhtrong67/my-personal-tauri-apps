@@ -3,6 +3,7 @@
 import { state, getMedia, emit, ASPECTS } from './store.js';
 import { uid, baseName } from './util.js';
 import { inTauri, serveFile, MEDIA_EXTS } from './io.js';
+import { queueProxy, cancelProxies } from './proxy.js';
 
 const extOf = (name) => String(name).split('.').pop().toLowerCase();
 
@@ -139,7 +140,9 @@ export async function importFiles(files) {
     try {
       const m = blank({ name: file.name, type: kind, size: file.size, url, file });
       await probe(m);
-      added.push(register(m));
+      const r = register(m);
+      queueProxy(r);
+      added.push(r);
     } catch {
       URL.revokeObjectURL(url);
       failed.push(file.name);
@@ -160,7 +163,9 @@ export async function importPaths(paths) {
       const { url, size } = await serveFile(path);
       const m = blank({ name, type: kind, size, url, path });
       await probe(m);
-      added.push(register(m));
+      const r = register(m);
+      queueProxy(r);
+      added.push(r);
     } catch {
       failed.push(name);
     }
@@ -175,7 +180,8 @@ export async function relinkPath(id, path) {
   const { url, size } = await serveFile(path);
   const fresh = blank({ name: baseName(path), type: m.type, size, url, path });
   await probe(fresh);
-  Object.assign(m, { ...fresh, id: m.id, offline: false });
+  Object.assign(m, { ...fresh, id: m.id, offline: false, proxyUrl: null });
+  queueProxy(m);
   emit('media');
   emit('change');
   return true;
@@ -192,6 +198,7 @@ export async function restoreMedia() {
       if (!m.size) m.size = size;
       if (m.type === 'image') m.el = await loadImage(url);
       m.offline = false;
+      queueProxy(m);
     } catch {
       m.url = null; m.offline = true;
     }
@@ -210,6 +217,7 @@ export function removeMedia(id) {
 }
 
 export function releaseAllMedia() {
+  cancelProxies();
   for (const m of state.media) if (m.url && m.url.startsWith('blob:')) URL.revokeObjectURL(m.url);
 }
 

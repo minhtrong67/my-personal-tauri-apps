@@ -1,5 +1,5 @@
 // Context menus for the timeline, the preview and clips.
-import { state, select, selClip, splitAt, duplicateSelected, deleteSelected, findClip, getMedia } from './store.js';
+import { state, select, selClip, selectedItems, splitAt, duplicateSelected, deleteSelected, findClip, getMedia } from './store.js';
 import * as E from './edit.js';
 import { showMenu } from './contextmenu.js';
 import { seek, toggle } from './engine.js';
@@ -17,8 +17,18 @@ function report(r, doneKey) {
   else api.toast(t('match.' + r.reason));
 }
 
+const selectItems = (track, c) => [
+  { label: t('ctx.selectTrack'), icon: 'layers', kbd: 'Ctrl+A', run: () => E.selectTrackClips(track) },
+  { label: t('ctx.selectAfter'), icon: 'layers', run: () => E.selectAround(track, c, 1) },
+  { label: t('ctx.selectBefore'), icon: 'layers', run: () => E.selectAround(track, c, -1) },
+  c.mediaId ? { label: t('ctx.selectSame'), icon: 'layers', run: () => E.selectSameMedia(c) } : null,
+  { label: t('ctx.selectAll'), icon: 'layers', run: E.selectAllClips },
+  selectedItems().length > 1 ? { label: t('ctx.invertSel'), icon: 'swap', run: () => E.invertTrackSelection(track) } : null,
+];
+
 export function clipMenu(track, c) {
   const hasAudio = !!E.pickAudio();
+  const multi = selectedItems().length > 1;
   const items = [
     { label: t('ctx.split'), icon: 'split', kbd: 'S', run: () => { if (!splitAt()) api.toast(t('toast.splitNone')); }, disabled: !inside(c) },
     { label: t('ctx.trimLeft'), icon: 'cut', kbd: 'Q', run: () => E.trimToPlayhead('left'), disabled: !inside(c) },
@@ -31,17 +41,19 @@ export function clipMenu(track, c) {
   ];
   if ('muted' in c) items.push('-', { label: t(c.muted ? 'ctx.unmute' : 'ctx.mute'), icon: c.muted ? 'vol' : 'mute', kbd: 'M', run: E.toggleMute });
 
-  if (track === 'main') {
+  if (track === 'main' && !multi) {
     items.push('-',
       { label: t('ctx.fitClip'), icon: 'repeat', run: () => report(E.fitClipToAudio(c), 'match.done'), disabled: !hasAudio },
       state.main.length > 1 ? { label: t('ctx.fitAll'), icon: 'repeat', run: () => report(E.matchMainToAudio(), 'match.done'), disabled: !hasAudio } : null);
   }
-  if (track === 'audio') {
+  if (track === 'audio' && !multi) {
     items.push('-',
       { label: t('ctx.matchVideo'), icon: 'repeat', run: () => report(E.matchMainToAudio(c), 'match.done'), disabled: !state.main.length },
       { label: t('ctx.trimAudio'), icon: 'cut', run: () => report(E.trimAudioToVideo(c), 'match.trimmed'), disabled: !state.main.length });
   }
   if (track !== 'audio') items.push('-', { label: t('ctx.resetTransform'), icon: 'rotate', run: E.resetTransform });
+  items.push('-', { label: t('ctx.selectMenu'), icon: 'layers', sub: selectItems(track, c) });
+  items.push('-', { label: t('ctx.fit'), icon: 'fit', kbd: 'Shift+Z', run: api.fit });
   items.push('-',
     { label: t('ctx.rippleDelete'), icon: 'trash', kbd: 'Shift+Del', run: E.rippleDelete, danger: true },
     { label: t('ctx.delete'), icon: 'trash', kbd: 'Del', run: deleteSelected, danger: true });
@@ -52,6 +64,8 @@ export function emptyTimelineMenu(time) {
   return [
     { label: t('ctx.paste'), icon: 'paste', kbd: 'Ctrl+V', run: () => E.pasteAtPlayhead(), disabled: !E.hasClipboard() },
     { label: t('ctx.addText'), icon: 'text', kbd: 'T', run: () => api.addText(time) },
+    '-',
+    { label: t('ctx.selectAll'), icon: 'layers', kbd: 'Ctrl+A', run: E.selectAllClips },
     '-',
     { label: t('ctx.fit'), icon: 'fit', kbd: 'Shift+Z', run: api.fit },
     { label: t('ctx.snap'), icon: 'magnet', kbd: 'N', checked: state.snap, run: api.snap },
@@ -88,13 +102,13 @@ $('#tl-content').addEventListener('contextmenu', (e) => {
     const { track, id } = ce.dataset;
     const c = findClip(track, id);
     if (!c) return;
-    select(track, id);
+    if (!state.multi.some((m) => m.id === id)) select(track, id);
     showMenu(e.clientX, e.clientY, clipMenu(track, c));
     return;
   }
   if (e.target.closest('.tl-ruler')) return;
   const time = Math.max(0, timeAtClientX(e.clientX));
-  select(null, null);
+  if (!(e.ctrlKey || e.shiftKey)) select(null, null);
   seek(time);
   showMenu(e.clientX, e.clientY, emptyTimelineMenu(time));
 });

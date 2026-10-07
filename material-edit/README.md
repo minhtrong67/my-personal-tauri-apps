@@ -29,11 +29,13 @@ Created by **minhtrong67** · with AI assistance from **Claude** (Anthropic)
 
 - **Project library** – press Save and your project shows up on the home screen next time (grid or list, search, sort, rename, duplicate, delete). Click to keep editing. Autosave included.
 - **Resizable panels** – drag the splitters between the media panel, preview, inspector and timeline; sizes are remembered. Full-screen preview (`F`).
-- **Multi-track timeline** – text, overlay, main (ripple) and audio tracks; move, trim, reorder, snap, zoom, scrub.
+- **Multi-track timeline** – text, overlay, main (ripple) and audio tracks; move, trim, reorder, snap, zoom, scrub; overlapping text/overlay clips are stacked in lanes; **Fit timeline** button (`Shift+Z`).
+- **Quick selection** – rubber-band (drag) selection in the timeline and media library, Ctrl/Shift+click, and *Select…* in the context menu (whole track, everything before/after, same source file, invert). Bulk move, copy, duplicate, mute, delete and volume/opacity edits.
 - **Match length** – right-click a video/image → *Match this clip's length to the audio*. Shorter clips are looped (duplicated), longer ones trimmed; works for images and for the whole video track.
 - **Context menus & shortcuts** – everywhere, with the familiar editor keys (see below).
 - **Transitions, filters, text, speed, volume, fades, aspect ratios** (16:9, 9:16, 1:1, 4:3, 21:9).
-- **Fast, RAM-safe export** – faster than real time, written straight to disk (see *Export*). Your last export options are remembered.
+- **Smooth preview for 2K/4K** – large MP4 videos get a small preview copy once (cached in the temp folder, toggle in Settings); scrubbing and playback stay fluid while export still uses the original. The preview is rendered crisp (≥1.5× supersampling, high-quality scaling) and only repaints when something changes.
+- **Fast, RAM-safe export** – faster than real time, written straight to disk (see *Export*). Choose the file name and folder in the export window (or set a default export folder in Settings); your last export options are remembered.
 - **Window memory** – size, position and maximised state are restored; optional "always start full screen".
 - **Material Design 3** – dynamic colour from any seed, light / dark / system, smooth motion (respects *reduced motion*).
 - **English & Tiếng Việt** UI.
@@ -50,6 +52,7 @@ Press `Ctrl+/` (or `?`) in the app for the full list.
 | Home / End | Start / end | Ctrl+C / X / V / D | Copy / cut / paste / duplicate |
 | F, F11 | Full-screen preview | M | Mute clip |
 | Ctrl+Z / Ctrl+Y | Undo / redo | T | Add text |
+| Ctrl+A | Select all | Esc | Clear selection |
 | = / - , \ | Zoom in / out, fit | N | Toggle snapping |
 | Ctrl+N / O / S | New / open / save | Ctrl+I / Ctrl+E | Import / export |
 | Ctrl+Shift+H | Project library | Ctrl+, | Settings |

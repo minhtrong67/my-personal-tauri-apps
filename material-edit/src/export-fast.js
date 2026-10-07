@@ -32,11 +32,11 @@ function vp9Candidates(w, h, fps) {
   return out.length ? out : ['vp09.00.52.08'];
 }
 
-async function pickVideoConfig(fmt, w, h, fps, bitrate) {
+export async function pickVideoConfig(fmt, w, h, fps, bitrate) {
   const list = fmt.vcodec === 'avc' ? avcCandidates(w, h, fps) : vp9Candidates(w, h, fps);
   for (const codec of list) {
     for (const hw of ['no-preference', 'prefer-software']) {
-      const cfg = { codec, width: w, height: h, bitrate, framerate: fps, latencyMode: fmt.vcodec === 'vp9' ? 'realtime' : 'quality', hardwareAcceleration: hw };
+      const cfg = { codec, width: w, height: h, bitrate, framerate: fps, latencyMode: 'quality', hardwareAcceleration: hw };
       if (fmt.vcodec === 'avc') cfg.avc = { format: 'avc' };
       try { const r = await VideoEncoder.isConfigSupported(cfg); if (r.supported) return r.config; } catch { /* next */ }
     }
@@ -62,7 +62,7 @@ export async function fastFormats(w = 1920, h = 1080, fps = 30) {
 /* ------------------------------------------------------------------ */
 /*  Video frame sources                                                */
 /* ------------------------------------------------------------------ */
-class FrameSource {
+export class FrameSource {
   constructor(clip, media) { this.clip = clip; this.m = media; this.cur = null; this.dec = null; this.el = null; this.rot = null; }
 
   async init() {

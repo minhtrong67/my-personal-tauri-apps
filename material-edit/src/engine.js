@@ -1,11 +1,15 @@
 // Playback clock, media element sync, audio graph, canvas rendering and real-time export.
-import { state, emit, layout, totalDuration, getMedia, allMediaClips, dims } from './store.js';
+import { state, emit, on, layout, totalDuration, getMedia, allMediaClips, dims } from './store.js';
 import { clamp } from './util.js';
 
 const pool = new Map(); // clipId -> { el, node, gain, url }
 let ac = null, master = null, monitor = null, exportDest = null;
 let cv = null, ctx = null, ov = null, octx = null;
 let raf = 0, last = 0, exporting = null;
+let dirty = true;
+/** Ask for one more preview repaint (the loop is idle while paused and nothing changes). */
+export const invalidate = () => { dirty = true; };
+for (const ev of ['change', 'select', 'seek', 'reset', 'lang', 'media', 'inspect', 'history']) on(ev, invalidate);
 let previewVol = 1;
 const supportsFilter = typeof CanvasRenderingContext2D !== 'undefined' && 'filter' in CanvasRenderingContext2D.prototype;
 
@@ -32,38 +36,65 @@ export function setPreviewVolume(v) {
 function entryFor(clip) {
   const m = getMedia(clip.mediaId);
   if (!m || !m.url || clip.kind === 'image') return null;
+  const src = m.type === 'video' && m.proxyUrl ? m.proxyUrl : m.url;
   let e = pool.get(clip.id);
-  if (e && e.url !== m.url) { destroyEntry(clip.id); e = null; }
-  if (!e) {
-    const el = document.createElement(m.type === 'audio' ? 'audio' : 'video');
+  if (e && e.url !== src && !state.playing) { destroyEntry(clip.id); e = null; }
+  if (e) return e;
+  const mk = (tag, url) => {
+    const el = document.createElement(tag);
     el.crossOrigin = 'anonymous';
     el.preload = 'auto';
     el.playsInline = true;
-    el.src = m.url;
-    let node = null, gain = null;
-    try {
-      ensureAudio();
-      node = ac.createMediaElementSource(el);
-      gain = ac.createGain();
-      node.connect(gain);
-      gain.connect(master);
-    } catch { /* falls back to element volume */ }
-    e = { el, node, gain, url: m.url };
-    pool.set(clip.id, e);
+    el.src = url;
+    for (const ev of ['seeked', 'loadeddata', 'canplay']) el.addEventListener(ev, invalidate);
+    return el;
+  };
+  const el = mk(m.type === 'audio' ? 'audio' : 'video', src);
+  // with a lightweight proxy the picture comes from the proxy and the sound from the original file
+  let aud = null;
+  if (src !== m.url) {
+    el.muted = true; aud = mk('audio', m.url);
+    // a broken proxy must never break playback: fall back to the original file
+    el.addEventListener('error', () => { if (m.proxyUrl === src) { m.proxyUrl = null; destroyEntry(clip.id); invalidate(); } });
   }
+  let node = null, gain = null;
+  try {
+    ensureAudio();
+    node = ac.createMediaElementSource(aud || el);
+    gain = ac.createGain();
+    node.connect(gain);
+    gain.connect(master);
+  } catch { /* falls back to element volume */ }
+  e = { el, aud, node, gain, url: src };
+  pool.set(clip.id, e);
   return e;
 }
 
 function destroyEntry(id) {
   const e = pool.get(id);
   if (!e) return;
-  try { e.el.pause(); e.el.removeAttribute('src'); e.el.load(); } catch { /* ignore */ }
+  for (const x of [e.el, e.aud]) if (x) { try { x.pause(); x.removeAttribute('src'); x.load(); } catch { /* ignore */ } }
   try { e.node && e.node.disconnect(); e.gain && e.gain.disconnect(); } catch { /* ignore */ }
   pool.delete(id);
 }
 
+/** Keeps the separate audio element (proxy mode) aligned with the picture element. */
+function mirrorAudio(e, playing, target, rate) {
+  const a = e.aud;
+  if (!a) return;
+  if (a.playbackRate !== rate) a.playbackRate = rate;
+  if (playing) {
+    if (Math.abs(a.currentTime - target) > 0.3 && !a.seeking) a.currentTime = target;
+    if (a.paused && a.readyState >= 1) a.play().catch(() => {});
+  } else {
+    if (!a.paused) a.pause();
+    if (Math.abs(a.currentTime - target) > 0.05 && !a.seeking) a.currentTime = target;
+  }
+}
+
 export function resetEngine() {
   for (const id of [...pool.keys()]) destroyEntry(id);
+  invalidate();
 }
 
 export function fadeFactor(c, lt) {
@@ -76,8 +107,22 @@ export function fadeFactor(c, lt) {
 
 function setGain(e, v) {
   if (e.gain) e.gain.gain.value = v;
-  else e.el.volume = clamp(v, 0, 1);
+  else (e.aud || e.el).volume = clamp(v, 0, 1);
 }
+
+const POOL_MAX = 4; // elements kept warm (decoders are expensive for 4K files)
+
+/** True while an active video is still buffering/seeking, so the clock should wait for it. */
+function activeStalled(t) {
+  for (const c of state.main.concat(state.overlay)) {
+    if (c.kind !== 'video' || t < c.start || t >= c.start + c.dur) continue;
+    const e = pool.get(c.id);
+    if (e && !e.el.error && !e.el.ended && (e.el.seeking || e.el.readyState < 3)) return true;
+  }
+  return false;
+}
+const anySeeking = () => { for (const e of pool.values()) if (e.el.seeking || (e.aud && e.aud.seeking)) return true; return false; };
+let holdSince = 0, holdIgnoreUntil = 0;
 
 /** Keeps every <video>/<audio> element aligned with the timeline clock. */
 function syncMedia(t, playing) {
@@ -89,8 +134,8 @@ function syncMedia(t, playing) {
     let e = pool.get(c.id);
     if (!active && !near) {
       if (e) {
-        if (t > end + 4 || c.start - t > 6) destroyEntry(c.id);
-        else { if (!e.el.paused) e.el.pause(); setGain(e, 0); }
+        if (pool.size > POOL_MAX && (t > end + 4 || c.start - t > 6)) destroyEntry(c.id);
+        else { if (!e.el.paused) e.el.pause(); if (e.aud && !e.aud.paused) e.aud.pause(); setGain(e, 0); }
       }
       continue;
     }
@@ -102,6 +147,7 @@ function syncMedia(t, playing) {
     if (!active) {
       if (Math.abs(el.currentTime - c.in) > 0.1 && !el.seeking) el.currentTime = Math.min(c.in, maxT);
       if (!el.paused) el.pause();
+      if (e.aud && !e.aud.paused) e.aud.pause();
       setGain(e, 0);
       continue;
     }
@@ -115,6 +161,7 @@ function syncMedia(t, playing) {
       if (!el.paused) el.pause();
       if (Math.abs(el.currentTime - target) > 0.02 && !el.seeking) el.currentTime = target;
     }
+    mirrorAudio(e, playing, target, rate);
     setGain(e, c.muted ? 0 : clamp(c.volume, 0, 4) * fadeFactor(c, t - c.start));
   }
 }
@@ -149,8 +196,22 @@ function sourceOf(c) {
   if (resolver && c.kind !== 'image') return resolver(c, m);
   if (c.kind === 'image') return m.el ? { src: m.el, w: m.w, h: m.h, m } : null;
   const e = pool.get(c.id);
-  if (!e || e.el.readyState < 1 || !e.el.videoWidth) return null;
-  return { src: e.el, w: e.el.videoWidth, h: e.el.videoHeight, m };
+  if (!e) return null;
+  const el = e.el;
+  const ready = el.readyState >= 2 && !el.seeking && el.videoWidth > 0;
+  if (ready) {
+    // while paused, keep a small snapshot of the settled frame to show during the next seek (no black flashes)
+    if (!state.playing && e.snapAt !== el.currentTime) {
+      const k = Math.min(1, 960 / el.videoWidth);
+      const sw = Math.max(2, Math.round(el.videoWidth * k)), sh = Math.max(2, Math.round(el.videoHeight * k));
+      if (!e.snap) e.snap = document.createElement('canvas');
+      if (e.snap.width !== sw) { e.snap.width = sw; e.snap.height = sh; }
+      try { e.snap.getContext('2d').drawImage(el, 0, 0, sw, sh); e.snapAt = el.currentTime; e.dim = { w: el.videoWidth, h: el.videoHeight }; } catch { /* ignore */ }
+    }
+    return { src: el, w: el.videoWidth, h: el.videoHeight, m };
+  }
+  if (e.snap && e.dim) return { src: e.snap, w: e.dim.w, h: e.dim.h, m };
+  return el.readyState >= 1 && el.videoWidth ? { src: el, w: el.videoWidth, h: el.videoHeight, m } : null;
 }
 
 function drawMedia(g, W, H, c, t, o = {}) {
@@ -295,6 +356,8 @@ function transitionPre(type, p, W, H) {
 
 /** Draws the whole composition at time t. `hits` (optional) receives pickable boxes. */
 export function drawFrame(g, W, H, t, hits) {
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = 'high';
   g.save();
   g.globalAlpha = 1;
   g.fillStyle = state.bg;
@@ -324,11 +387,13 @@ export function attach(canvas, overlay) {
 }
 
 export function resizePreview(cssW, cssH, cap = 1600) {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = Math.max(Math.min(window.devicePixelRatio || 1, 2), 1.5); // never render the preview below 1.5× (keeps it crisp)
   let w = Math.round(cssW * dpr), h = Math.round(cssH * dpr);
   const long = Math.max(w, h);
   if (long > cap) { w = Math.round((w * cap) / long); h = Math.round((h * cap) / long); }
-  for (const c of [cv, ov]) { c.style.width = cssW + 'px'; c.style.height = cssH + 'px'; if (c.width !== w) c.width = w; if (c.height !== h) c.height = h; }
+  let resized = false;
+  for (const c of [cv, ov]) { c.style.width = cssW + 'px'; c.style.height = cssH + 'px'; if (c.width !== w) { c.width = w; resized = true; } if (c.height !== h) { c.height = h; resized = true; } }
+  if (resized) renderPreview();
 }
 
 function drawSelection() {
@@ -384,17 +449,24 @@ export function seek(t) {
 
 function tick(now) {
   raf = requestAnimationFrame(tick);
+  let hold = false;
   if (state.playing) {
-    const dt = Math.min((now - last) / 1000, 0.25);
+    // wait (briefly) for a video that is still seeking/buffering instead of letting the picture freeze
+    if (now > holdIgnoreUntil && activeStalled(state.t)) {
+      if (!holdSince) holdSince = now;
+      if (now - holdSince > 2500) { holdIgnoreUntil = now + 5000; holdSince = 0; } else hold = true;
+    } else holdSince = 0;
+    const dt = hold ? 0 : Math.min((now - last) / 1000, 0.25);
     last = now;
     state.t += dt;
     const d = totalDuration();
     if (state.t >= d) { state.t = d; state.playing = false; emit('pause'); emit('end'); }
   }
-  syncMedia(state.t, state.playing);
-  if (!exporting) renderPreview();
+  syncMedia(state.t, state.playing && !hold);
+  const busy = state.playing || dirty || anySeeking();
+  if (!exporting && busy) { dirty = false; renderPreview(); }
   if (exporting) exporting.frame();
-  emit('time');
+  if (busy || exporting) emit('time');
 }
 
 export function start() { if (!raf) raf = requestAnimationFrame(tick); }

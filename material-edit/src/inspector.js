@@ -1,5 +1,5 @@
 // Right-hand inspector: project settings, media clip, text clip, audio clip.
-import { state, on, emit, selClip, layout, commit, ASPECTS, FILTER_PRESETS, TRANSITIONS, defaultFilters, totalDuration, getMedia } from './store.js';
+import { state, on, emit, selClip, selectedItems, deleteSelected, duplicateSelected, layout, commit, ASPECTS, FILTER_PRESETS, TRANSITIONS, defaultFilters, totalDuration, getMedia } from './store.js';
 import { $, h, clamp, icon } from './util.js';
 import { t } from './i18n.js';
 
@@ -68,7 +68,7 @@ function projectPanel() {
   const p = h('div', { class: 'insp' });
   p.append(h('h3', { text: t('insp.project') }));
   p.append(heading(t('insp.aspect')));
-  const grid = h('div', { class: 'chips' });
+  const grid = h('div', { class: 'chips aspect-grid' });
   for (const k of Object.keys(ASPECTS)) {
     grid.append(h('button', { class: 'chip-btn' + (state.aspect === k ? ' on' : ''), text: k, onclick() { state.aspect = k; commit(); emit('change'); emit('inspect'); } }));
   }
@@ -255,16 +255,34 @@ function audioPanel(c) {
   return p;
 }
 
+/* ---------------- multi selection ---------------- */
+function multiPanel(items) {
+  const p = h('div', { class: 'panel' });
+  p.append(h('h3', { text: t('insp.multi', { n: items.length }) }), h('p', { class: 'hint', text: t('insp.multiHint') }));
+  const each = (prop, fn) => { for (const i of items) if (prop in i.clip) fn(i.clip); };
+  const first = (prop, d) => { const i = items.find((x) => prop in x.clip); return i ? i.clip[prop] : d; };
+  if (items.some((i) => 'volume' in i.clip)) p.append(slider({ label: t('insp.multiVol'), get: () => Math.round(first('volume', 1) * 100), set: (v) => each('volume', (c) => { c.volume = v / 100; }), min: 0, max: 400, fmt: fmtPct, def: 100 }));
+  if (items.some((i) => 'speed' in i.clip && i.clip.kind !== 'image' && i.track !== 'main')) p.append(slider({ label: t('insp.multiSpeed'), get: () => first('speed', 1), set: (v) => each('speed', (c) => { if (c.kind !== 'image') { c.dur = (c.dur * c.speed) / v; c.speed = v; } }), min: 0.25, max: 4, step: 0.05, fmt: (v) => v + '×', def: 1 }));
+  if (items.some((i) => 'opacity' in i.clip)) p.append(slider({ label: t('insp.multiOpacity'), get: () => Math.round(first('opacity', 1) * 100), set: (v) => each('opacity', (c) => { c.opacity = v / 100; }), min: 0, max: 100, fmt: fmtPct, def: 100 }));
+  p.append(h('div', { class: 'btn-row' },
+    h('button', { class: 'btn tonal sm', onclick: duplicateSelected }, icon('copy'), t('ctx.duplicate')),
+    h('button', { class: 'btn tonal sm', onclick: deleteSelected }, icon('trash'), t('ctx.delete')),
+    h('button', { class: 'btn text sm', onclick: () => emit('clearsel') }, t('btn.deselect'))));
+  return p;
+}
+
 /* ---------------- render ---------------- */
 export function render(force = false) {
   const c = selClip();
   const sel = state.sel;
-  const key = sel ? sel.track + ':' + sel.id : 'none';
+  const multi = selectedItems();
+  const key = multi.length > 1 ? 'multi:' + multi.map((m) => m.clip.id).join(',') : sel ? sel.track + ':' + sel.id : 'none';
   if (key !== lastKey) { tab = 'basic'; lastKey = key; }
   const top = root.scrollTop;
   root.replaceChildren();
   let panel;
-  if (!c) panel = projectPanel();
+  if (multi.length > 1) panel = multiPanel(multi);
+  else if (!c) panel = projectPanel();
   else if (sel.track === 'text') panel = textPanel(c);
   else if (sel.track === 'audio') panel = audioPanel(c);
   else panel = mediaPanel(c, sel.track);

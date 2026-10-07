@@ -22,6 +22,7 @@ export const GROUPS = [
     [['W'], 'trimRight', 'sc.trimRight'],
     [['Delete', 'Backspace'], 'delete', 'sc.delete'],
     [['Shift+Delete'], 'rippleDelete', 'sc.rippleDelete'],
+    [['Ctrl+A'], 'selectAll', 'sc.selectAll'],
     [['Ctrl+D'], 'duplicate', 'sc.duplicate'],
     [['Ctrl+C'], 'copy', 'sc.copy'],
     [['Ctrl+X'], 'cut', 'sc.cut'],
@@ -72,7 +73,7 @@ export function comboOf(e) {
   return parts.join('+');
 }
 
-const NATIVE_WHEN_TYPING = new Set(['Ctrl+Z', 'Ctrl+Y', 'Ctrl+Shift+Z', 'Ctrl+C', 'Ctrl+X', 'Ctrl+V', 'Ctrl+A', 'Ctrl+D', 'Ctrl+B', 'Ctrl+K', 'Delete', 'Backspace']);
+const NATIVE_WHEN_TYPING = new Set(['Ctrl+Z', 'Ctrl+Y', 'Ctrl+Shift+Z', 'Ctrl+C', 'Ctrl+X', 'Ctrl+V', 'Ctrl+A', 'Ctrl+D', 'Ctrl+B', 'Ctrl+K', 'Delete', 'Backspace', 'Ctrl+A']);
 const HOME_CMDS = new Set(['new', 'openFile', 'shortcuts', 'settings']);
 
 /**
