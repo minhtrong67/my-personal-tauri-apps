@@ -37,3 +37,8 @@ export function h(tag, props = {}, ...kids) {
 
 export const icon = (id, cls = '') =>
   h('span', { class: 'ico ' + cls, html: `<svg class="i"><use href="#i-${id}"/></svg>` });
+
+/** Gives the browser a chance to handle input/paint between heavy steps (cheaper and less throttled than setTimeout). */
+const yq = []; const yc = new MessageChannel();
+yc.port1.onmessage = () => { const r = yq.shift(); if (r) r(); };
+export const yieldNow = () => new Promise((r) => { yq.push(r); yc.port2.postMessage(0); });

@@ -1,0 +1,24 @@
+[package]
+name = "material-xlsx"
+version = "1.0.0"
+description = "Material Xlsx - a simple, modern spreadsheet editor for .xlsx files"
+authors = ["minhtrong67"]
+license = "MIT"
+edition = "2021"
+
+[lib]
+name = "material_xlsx_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-window-state = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+arboard = "3"

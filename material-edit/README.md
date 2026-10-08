@@ -35,7 +35,7 @@ Created by **minhtrong67** · with AI assistance from **Claude** (Anthropic)
 - **Context menus & shortcuts** – everywhere, with the familiar editor keys (see below).
 - **Transitions, filters, text, speed, volume, fades, aspect ratios** (16:9, 9:16, 1:1, 4:3, 21:9).
 - **Smooth preview for 2K/4K** – large MP4 videos get a small preview copy once (cached in the temp folder, toggle in Settings); scrubbing and playback stay fluid while export still uses the original. The preview is rendered crisp (≥1.5× supersampling, high-quality scaling) and only repaints when something changes.
-- **Fast, RAM-safe export** – faster than real time, written straight to disk (see *Export*). Choose the file name and folder in the export window (or set a default export folder in Settings); your last export options are remembered.
+- **Fast, RAM-safe export** – always starts at MP4 · 1080p · 60 fps; faster than real time, written straight to disk (see *Export*). Choose the file name and folder in the export window (or set a default export folder in Settings); your last export options are remembered.
 - **Window memory** – size, position and maximised state are restored; optional "always start full screen".
 - **Material Design 3** – dynamic colour from any seed, light / dark / system, smooth motion (respects *reduced motion*).
 - **English & Tiếng Việt** UI.
@@ -100,7 +100,7 @@ npm run icons    # regenerate icons (Python + Pillow)
 
 - Projects store **paths** to your media (they are never copied). If a file moves, the clip shows as offline and can be relinked.
 - The fast path decodes MP4/MOV directly; other formats (WebM, MKV…) are decoded by seeking, which is slower but still frame-exact. H.264/AAC encoding depends on the system webview (WebView2 on Windows supports it).
-- Videos whose audio would need too much memory to mix (very large files) are exported in real-time mode.
+- MP4/MOV (AAC, Opus) and MP3 audio is streamed while exporting, so memory stays flat even for long videos; other audio formats are decoded fully (up to ~200 MB per file).
 - Canvas filters are not supported by WebKit-based webviews (macOS/Linux).
 - Optional: install [FFmpeg](https://ffmpeg.org/) to enable "MP4 via FFmpeg" for real-time recordings.
 

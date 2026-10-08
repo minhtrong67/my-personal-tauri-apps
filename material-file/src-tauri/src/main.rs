@@ -5,8 +5,12 @@ use serde::Serialize;
 use std::{
     fs,
     path::{Path, PathBuf},
+    process::Command,
     time::{SystemTime, UNIX_EPOCH},
 };
+
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use tauri::Manager;
 
 /* ------------------------------------------------------------------ models */
@@ -55,7 +59,77 @@ struct Props {
     hidden: bool,
 }
 
+#[derive(Serialize)]
+struct Tools {
+    winrar: bool,
+    sevenzip: bool,
+    code: bool,
+    terminal: bool,
+}
+
 /* ----------------------------------------------------------------- helpers */
+
+/// Run helper processes without flashing a console window on Windows.
+fn quiet(mut c: Command) -> Command {
+    #[cfg(windows)]
+    {
+        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    c
+}
+
+fn program_files() -> Vec<PathBuf> {
+    ["ProgramFiles", "ProgramW6432", "ProgramFiles(x86)"]
+        .iter()
+        .filter_map(|k| std::env::var_os(k))
+        .map(PathBuf::from)
+        .collect()
+}
+
+fn on_path(name: &str) -> bool {
+    let finder = if cfg!(windows) { "where" } else { "which" };
+    quiet(Command::new(finder))
+        .arg(name)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+fn find_winrar() -> Option<PathBuf> {
+    for base in program_files() {
+        let p = base.join("WinRAR").join("WinRAR.exe");
+        if p.exists() {
+            return Some(p);
+        }
+    }
+    if on_path("WinRAR") {
+        return Some(PathBuf::from("WinRAR"));
+    }
+    None
+}
+
+fn find_7z() -> Option<PathBuf> {
+    for base in program_files() {
+        let p = base.join("7-Zip").join("7z.exe");
+        if p.exists() {
+            return Some(p);
+        }
+    }
+    if on_path("7z") {
+        return Some(PathBuf::from("7z"));
+    }
+    None
+}
+
+fn ps_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', "''"))
+}
+
+fn run_ok(mut cmd: Command, ok_codes: &[i32]) -> bool {
+    cmd.status()
+        .map(|s| s.code().map(|c| ok_codes.contains(&c)).unwrap_or(false))
+        .unwrap_or(false)
+}
 
 fn ms(t: std::io::Result<SystemTime>) -> Option<i64> {
     t.ok()
@@ -298,9 +372,31 @@ async fn delete_items(paths: Vec<String>, permanent: bool) -> Result<(), String>
     }
 }
 
-/// Copy (`mv = false`) or move (`mv = true`) items into `dest`. Returns the new paths.
+/// Names that already exist in `dest` (excluding pastes into the same folder).
 #[tauri::command]
-async fn paste_items(sources: Vec<String>, dest: String, mv: bool) -> Result<Vec<String>, String> {
+async fn check_conflicts(sources: Vec<String>, dest: String) -> Vec<String> {
+    let dest_dir = PathBuf::from(&dest);
+    sources
+        .iter()
+        .filter_map(|s| {
+            let src = PathBuf::from(s);
+            let name = src.file_name()?.to_owned();
+            if src.parent() == Some(dest_dir.as_path()) {
+                return None;
+            }
+            if dest_dir.join(&name).exists() {
+                Some(name.to_string_lossy().into_owned())
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// Copy (`mv = false`) or move (`mv = true`) items into `dest`. `policy` decides what happens
+/// when a name already exists: "rename" (keep both), "replace" or "skip". Returns the new paths.
+#[tauri::command]
+async fn paste_items(sources: Vec<String>, dest: String, mv: bool, policy: String) -> Result<Vec<String>, String> {
     let dest_dir = PathBuf::from(&dest);
     let mut created = Vec::new();
     for s in &sources {
@@ -315,7 +411,23 @@ async fn paste_items(sources: Vec<String>, dest: String, mv: bool) -> Result<Vec
             created.push(s.clone());
             continue;
         }
-        let target = free_name(&dest_dir, &name, is_dir, same_parent);
+        let direct = dest_dir.join(&name);
+        let target = if !same_parent && direct.exists() {
+            match policy.as_str() {
+                "skip" => continue,
+                "replace" => {
+                    if src.starts_with(&direct) {
+                        return Err("into-itself".into());
+                    }
+                    let res = if direct.is_dir() { fs::remove_dir_all(&direct) } else { fs::remove_file(&direct) };
+                    res.map_err(|e| e.to_string())?;
+                    direct
+                }
+                _ => free_name(&dest_dir, &name, is_dir, false),
+            }
+        } else {
+            free_name(&dest_dir, &name, is_dir, same_parent)
+        };
         if mv {
             if fs::rename(&src, &target).is_err() {
                 copy_recursive(&src, &target).map_err(|e| e.to_string())?;
@@ -358,6 +470,191 @@ async fn item_properties(path: String) -> Result<Props, String> {
     })
 }
 
+#[tauri::command]
+async fn tools_available() -> Tools {
+    Tools {
+        winrar: find_winrar().is_some(),
+        sevenzip: find_7z().is_some(),
+        code: on_path("code"),
+        terminal: on_path("wt"),
+    }
+}
+
+/// Open an item with a well-known tool. `tool` is one of:
+/// terminal, powershell, code, notepad, winrar.
+#[tauri::command]
+async fn open_with(tool: String, path: String) -> Result<(), String> {
+    let p = PathBuf::from(&path);
+    let dir = if p.is_dir() {
+        p.clone()
+    } else {
+        p.parent().map(|x| x.to_path_buf()).unwrap_or_else(|| p.clone())
+    };
+    let dir_s = dir.to_string_lossy().into_owned();
+    match tool.as_str() {
+        "terminal" => {
+            if quiet(Command::new("wt")).args(["-d", &dir_s]).spawn().is_ok() {
+                return Ok(());
+            }
+            quiet(Command::new("cmd"))
+                .args(["/C", "start", "", "/D", &dir_s, "cmd.exe"])
+                .spawn()
+                .map(|_| ())
+                .map_err(|e| e.to_string())
+        }
+        "powershell" => quiet(Command::new("cmd"))
+            .args(["/C", "start", "", "/D", &dir_s, "powershell.exe"])
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| e.to_string()),
+        "code" => {
+            let mut c = quiet(Command::new("cmd"));
+            c.args(["/C", "code", &path]);
+            if run_ok(c, &[0]) { Ok(()) } else { Err("not-found".into()) }
+        }
+        "notepad" => Command::new("notepad.exe")
+            .arg(&path)
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| e.to_string()),
+        "winrar" => match find_winrar() {
+            Some(w) => Command::new(w).arg(&path).spawn().map(|_| ()).map_err(|e| e.to_string()),
+            None => Err("no-winrar".into()),
+        },
+        _ => Err("unknown-tool".into()),
+    }
+}
+
+/// Show an item selected in the system file manager.
+#[tauri::command]
+fn reveal_item(path: String) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        Command::new("explorer")
+            .raw_arg(format!("/select,\"{}\"", path))
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(windows))]
+    {
+        let parent = Path::new(&path).parent().map(|p| p.to_path_buf()).unwrap_or_default();
+        open::that(parent).map_err(|e| e.to_string())
+    }
+}
+
+/// Extract an archive. Tries WinRAR, then 7-Zip, then PowerShell (zip) and tar.
+/// With `to_folder` the files go into a new folder named after the archive.
+#[tauri::command]
+async fn extract_archive(path: String, dest: String, to_folder: bool) -> Result<String, String> {
+    let src = PathBuf::from(&path);
+    let mut stem = src
+        .file_stem()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "extracted".into());
+    if stem.to_lowercase().ends_with(".tar") {
+        stem.truncate(stem.len() - 4);
+    }
+    let ext = src
+        .extension()
+        .map(|e| e.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+    let mut out_dir = PathBuf::from(&dest);
+    if to_folder {
+        out_dir = free_name(&out_dir, &stem, true, false);
+    }
+    fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
+    let out_s = out_dir.to_string_lossy().into_owned();
+    let mut ok = false;
+
+    if let Some(w) = find_winrar() {
+        // WinRAR needs a trailing separator to treat the destination as a folder
+        let dest_arg = format!("{}{}", out_s.trim_end_matches(['\\', '/']), std::path::MAIN_SEPARATOR);
+        let mut c = Command::new(w);
+        c.args(["x", "-ibck", "-y", "-o+"]).arg(&path).arg(&dest_arg);
+        ok = run_ok(c, &[0, 1]);
+    }
+    if !ok {
+        if let Some(z) = find_7z() {
+            let mut c = quiet(Command::new(z));
+            c.args(["x", "-y"]).arg(format!("-o{}", out_s)).arg(&path);
+            ok = run_ok(c, &[0, 1]);
+        }
+    }
+    if !ok && ext == "zip" {
+        let script = format!(
+            "Expand-Archive -LiteralPath {} -DestinationPath {} -Force",
+            ps_quote(&path),
+            ps_quote(&out_s)
+        );
+        let mut c = quiet(Command::new("powershell"));
+        c.args(["-NoProfile", "-NonInteractive", "-Command", &script]);
+        ok = run_ok(c, &[0]);
+    }
+    if !ok {
+        let mut c = quiet(Command::new("tar"));
+        c.arg("-xf").arg(&path).arg("-C").arg(&out_s);
+        ok = run_ok(c, &[0]);
+    }
+    if ok {
+        Ok(out_s)
+    } else {
+        if to_folder {
+            let _ = fs::remove_dir(&out_dir); // remove the empty folder we created
+        }
+        Err("no-extractor".into())
+    }
+}
+
+/// Create an archive from `paths` inside `dest_dir`. `kind` is "zip" or "rar".
+#[tauri::command]
+async fn compress_items(paths: Vec<String>, dest_dir: String, name: String, kind: String) -> Result<String, String> {
+    if paths.is_empty() {
+        return Err("empty".into());
+    }
+    let file_name = format!("{}.{}", name, kind);
+    let out = free_name(Path::new(&dest_dir), &file_name, false, false);
+    let out_s = out.to_string_lossy().into_owned();
+    let mut ok = false;
+
+    if let Some(w) = find_winrar() {
+        let mut c = Command::new(w);
+        c.args(["a", "-ibck", "-ep1", "-y"]);
+        if kind == "zip" {
+            c.arg("-afzip");
+        }
+        c.arg(&out_s);
+        for p in &paths {
+            c.arg(p);
+        }
+        ok = run_ok(c, &[0, 1]);
+    } else if kind == "rar" {
+        return Err("no-winrar".into());
+    }
+    if !ok && kind == "zip" {
+        let list = paths.iter().map(|p| ps_quote(p)).collect::<Vec<_>>().join(",");
+        let script = format!("Compress-Archive -LiteralPath {} -DestinationPath {} -Force", list, ps_quote(&out_s));
+        let mut c = quiet(Command::new("powershell"));
+        c.args(["-NoProfile", "-NonInteractive", "-Command", &script]);
+        ok = run_ok(c, &[0]);
+    }
+    if ok { Ok(out_s) } else { Err("compress-failed".into()) }
+}
+
+/// First few KB of a text file for the details pane (errors for binary files).
+#[tauri::command]
+async fn preview_text(path: String) -> Result<String, String> {
+    use std::io::Read;
+    let mut f = fs::File::open(&path).map_err(|e| e.to_string())?;
+    let mut buf = vec![0u8; 4096];
+    let n = f.read(&mut buf).map_err(|e| e.to_string())?;
+    buf.truncate(n);
+    if buf.contains(&0) {
+        return Err("binary".into());
+    }
+    Ok(String::from_utf8_lossy(&buf).into_owned())
+}
+
 /// Folder passed on the command line, if any.
 #[tauri::command]
 fn startup_path() -> Option<String> {
@@ -368,10 +665,23 @@ fn startup_path() -> Option<String> {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(
+            // remember window size / position / maximized state between launches
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::POSITION
+                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+                )
+                .build(),
+        )
         .setup(|app| {
             // The window starts hidden and the page shows it after the first paint (no white
             // flash). This is a safety net in case the page never signals readiness.
             if let Some(window) = app.get_webview_window("main") {
+                if let Some(icon) = app.default_window_icon().cloned() {
+                    let _ = window.set_icon(icon);
+                }
                 std::thread::spawn(move || {
                     std::thread::sleep(std::time::Duration::from_secs(4));
                     let _ = window.show();
@@ -389,7 +699,14 @@ fn main() {
             rename_item,
             delete_items,
             paste_items,
+            check_conflicts,
             item_properties,
+            tools_available,
+            open_with,
+            reveal_item,
+            extract_archive,
+            compress_items,
+            preview_text,
             startup_path
         ])
         .run(tauri::generate_context!())

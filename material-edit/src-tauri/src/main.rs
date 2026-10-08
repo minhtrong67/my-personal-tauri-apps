@@ -259,6 +259,39 @@ fn file_size(path: String) -> Result<u64, String> {
     std::fs::metadata(&path).map(|m| m.len()).map_err(|e| format!("{path}: {e}"))
 }
 
+/// Shows a file in the system file manager (selected where the platform supports it).
+#[tauri::command]
+fn reveal_file(path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt as _;
+        Command::new("explorer")
+            .raw_arg(format!("/select,\"{}\"", path.replace('/', "\\")))
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open").args(["-R", &path]).spawn().map_err(|e| e.to_string())?;
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        let dir = Path::new(&path).parent().map(|p| p.to_path_buf()).unwrap_or_else(|| PathBuf::from("."));
+        Command::new("xdg-open").arg(dir).spawn().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// Deletes an unfinished/cancelled export (only video files).
+#[tauri::command]
+fn delete_export(path: String) -> Result<(), String> {
+    let ext = Path::new(&path).extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    if !["mp4", "webm", "mov"].contains(&ext.as_str()) {
+        return Err("not a video file".into());
+    }
+    std::fs::remove_file(&path).map_err(|e| e.to_string())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -266,6 +299,14 @@ fn main() {
         .setup(|app| {
             let server = MediaServer::start().map_err(|e| format!("media server: {e}"))?;
             app.manage(server);
+            // safety net: the window starts hidden and is shown by the UI; show it anyway if that never happens
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(6));
+                if let Some(w) = handle.get_webview_window("main") {
+                    let _ = w.show();
+                }
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -280,7 +321,9 @@ fn main() {
             project_read,
             project_write,
             project_delete,
-            file_size
+            file_size,
+            reveal_file,
+            delete_export
         ])
         .run(tauri::generate_context!())
         .expect("error while running Material Edit");

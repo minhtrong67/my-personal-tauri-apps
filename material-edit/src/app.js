@@ -21,7 +21,7 @@ import {
   inTauri, pickDirectory, pickSavePath, pickOpenPath, pickMediaPaths, readText, writeText, currentWindow, onFileDrop,
   libRead, libWrite, setWindowFullscreen, isWindowFullscreen,
 } from './io.js';
-import { openExport, setExportToast } from './exporter.js';
+import { openExport, setExportToast, warmExport } from './exporter.js';
 import { $, $$, fmtTime, baseName, stripExt, clamp, uid, h } from './util.js';
 
 /* ------------------------------------------------------------------ */
@@ -687,6 +687,12 @@ async function boot() {
   window.addEventListener('beforeunload', () => { if (state.dirty && !blankProject()) { try { libWrite(state.id, JSON.stringify(toProject({ cover: state.cover }))); } catch { /* ignore */ } } });
   window.addEventListener('blur', () => { if (state.dirty) saveToLibrary(true); });
   await showHome();
+  // the window starts hidden (no jump from the default position to the saved one): show it once everything is in place
+  if (w) {
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    try { await w.show(); await w.setFocus(); } catch { /* ignore */ }
+  }
+  warmExport();
 }
 boot();
 

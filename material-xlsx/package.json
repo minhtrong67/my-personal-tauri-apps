@@ -1,0 +1,16 @@
+{
+  "name": "material-xlsx",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Material Xlsx - a simple, modern spreadsheet editor (Tauri 2 + Material Design 3)",
+  "author": "minhtrong67",
+  "license": "MIT",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "test": "node tests/numfmt.test.mjs && node tests/formula.test.mjs && node tests/model.test.mjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

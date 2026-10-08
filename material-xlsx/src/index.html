@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en" data-anim="on">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Material Xlsx</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-undo" viewBox="0 0 24 24"><path d="M8 5 4 9l4 4"/><path d="M4 9h10a6 6 0 0 1 0 12h-4"/></symbol>
+      <symbol id="i-redo" viewBox="0 0 24 24"><path d="m16 5 4 4-4 4"/><path d="M20 9H10a6 6 0 0 0 0 12h4"/></symbol>
+      <symbol id="i-bold" viewBox="0 0 24 24"><path d="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7.5a3.5 3.5 0 0 1 0 7H7z"/></symbol>
+      <symbol id="i-italic" viewBox="0 0 24 24"><path d="M10 5h8M6 19h8M15 5 9 19"/></symbol>
+      <symbol id="i-underline" viewBox="0 0 24 24"><path d="M7 4v7a5 5 0 0 0 10 0V4M5 21h14"/></symbol>
+      <symbol id="i-strike" viewBox="0 0 24 24"><path d="M4 12h16M16.5 7.5C16 6 14.4 5 12.2 5 9.8 5 8 6.2 8 8c0 1.6 1.3 2.4 4 3M8 16.5C8.5 18 10 19 12 19c2.4 0 4.2-1.2 4.2-3"/></symbol>
+      <symbol id="i-textcolor" viewBox="0 0 24 24"><path d="M6 17 12 4l6 13M8.5 12.5h7"/></symbol>
+      <symbol id="i-fill" viewBox="0 0 24 24"><path d="m4 12 7-7 7 7-6.5 6.5a2 2 0 0 1-2.8 0z"/><path d="M19 15s2 2.2 2 3.5a2 2 0 0 1-4 0C17 17.2 19 15 19 15z"/></symbol>
+      <symbol id="i-border" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16M12 4v16"/></symbol>
+      <symbol id="i-merge" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7.5 12H11M9.5 10 7.5 12l2 2M16.5 12H13M14.5 10l2 2-2 2"/></symbol>
+      <symbol id="i-alignl" viewBox="0 0 24 24"><path d="M4 6h16M4 10h10M4 14h16M4 18h10"/></symbol>
+      <symbol id="i-alignc" viewBox="0 0 24 24"><path d="M4 6h16M7 10h10M4 14h16M7 18h10"/></symbol>
+      <symbol id="i-alignr" viewBox="0 0 24 24"><path d="M4 6h16M10 10h10M4 14h16M10 18h10"/></symbol>
+      <symbol id="i-valign" viewBox="0 0 24 24"><path d="M5 4h14M5 20h14M12 8v8M9.5 10.5 12 8l2.5 2.5M9.5 13.5 12 16l2.5-2.5"/></symbol>
+      <symbol id="i-wrap" viewBox="0 0 24 24"><path d="M4 6h16M4 12h11.5a3 3 0 0 1 0 6H12M14 15.5 11.8 18 14 20.5M4 18h5"/></symbol>
+      <symbol id="i-cells" viewBox="0 0 24 24"><rect x="3" y="4" width="14" height="14" rx="2"/><path d="M3 11h14M10 4v14M19 16v6M16 19h6"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 11v6M14 11v6M6.5 7l1 13h9l1-13M9 7V4h6v3"/></symbol>
+      <symbol id="i-sortasc" viewBox="0 0 24 24"><path d="M7 20V4M4 7l3-3 3 3M14 6h6M14 11h4M14 16h2"/></symbol>
+      <symbol id="i-sortdesc" viewBox="0 0 24 24"><path d="M7 4v16M4 17l3 3 3-3M14 6h2M14 11h4M14 16h6"/></symbol>
+      <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"/></symbol>
+      <symbol id="i-freeze" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9.5h16M9.5 4v16" stroke-width="2.6"/></symbol>
+      <symbol id="i-sigma" viewBox="0 0 24 24"><path d="M18 5H7l6 7-6 7h11"/></symbol>
+      <symbol id="i-eraser" viewBox="0 0 24 24"><path d="m7 20 11-11a2.1 2.1 0 0 0 0-3l-1-1a2.1 2.1 0 0 0-3 0L4 15a2.1 2.1 0 0 0 0 3l2 2zM10 20h10M8.5 11.5l5 5"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+      <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6"/></symbol>
+      <symbol id="i-newfile" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4M12 11v6M9 14h6"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
+      <symbol id="i-fullscreen" viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/></symbol>
+      <symbol id="i-tune" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+      <symbol id="i-system" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+      <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 14h10v7H7z"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-chevd" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+      <symbol id="i-chevl" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+      <symbol id="i-chevr" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 5 5L19 7"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></symbol>
+      <symbol id="i-cut" viewBox="0 0 24 24"><circle cx="6" cy="7" r="3"/><circle cx="6" cy="17" r="3"/><path d="M8.5 8.5 20 19M8.5 15.5 20 5"/></symbol>
+      <symbol id="i-paste" viewBox="0 0 24 24"><path d="M9 4h6v3H9zM7 5H6a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m-4-4 4 4 4-4M5 20h14"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V5m-4 4 4-4 4 4M5 20h14"/></symbol>
+      <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></symbol>
+      <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+      <symbol id="i-rowins" viewBox="0 0 24 24"><rect x="3" y="12" width="18" height="8" rx="2"/><path d="M12 3v6M9 6h6"/></symbol>
+      <symbol id="i-colins" viewBox="0 0 24 24"><rect x="12" y="3" width="8" height="18" rx="2"/><path d="M3 12h6M6 9v6"/></symbol>
+      <symbol id="i-select" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 3"/><path d="M9 12h6M12 9v6"/></symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></symbol>
+      <symbol id="i-sheet" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M9 10v9"/></symbol>
+      <symbol id="i-zoomin" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5M11 8.5v5M8.5 11h5"/></symbol>
+      <symbol id="i-zoomout" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5M8.5 11h5"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="busy" id="busy" hidden><span></span></div>
+
+  <div id="app">
+    <header class="appbar intro" style="--i:0">
+      <div class="brand">
+        <img class="logo" src="app-icon.png" alt="" width="32" height="32" />
+        <div class="brand-text"><span class="appname">Material Xlsx</span><span class="docname" id="docname"></span></div>
+      </div>
+      <nav class="menus" id="menus"></nav>
+      <div class="spacer"></div>
+      <button class="btn text" id="btn-lang" aria-label="Language"></button>
+      <button class="icon-btn" id="btn-theme"></button>
+      <button class="icon-btn" id="btn-settings"><svg class="i"><use href="#i-settings"/></svg></button>
+    </header>
+
+    <div class="toolbar intro" id="toolbar" style="--i:1"></div>
+
+    <div class="fbar intro" style="--i:2">
+      <input class="namebox" id="namebox" spellcheck="false" autocomplete="off" />
+      <span class="fx">fx</span>
+      <div class="finput-wrap"><input class="finput" id="finput" spellcheck="false" autocomplete="off" /></div>
+    </div>
+
+    <main class="gridarea intro" style="--i:3"><div id="grid"></div></main>
+
+    <footer class="bottom intro" style="--i:4">
+      <div class="tabs-wrap">
+        <button class="icon-btn" id="tab-add" data-i18n-title="tab.add"><svg class="i"><use href="#i-plus"/></svg></button>
+        <button class="icon-btn" id="tab-prev" data-i18n-title="tab.prev"><svg class="i"><use href="#i-chevl"/></svg></button>
+        <button class="icon-btn" id="tab-next" data-i18n-title="tab.next"><svg class="i"><use href="#i-chevr"/></svg></button>
+        <div class="tabs" id="tabs"><div class="tab-ind" id="tab-ind"></div></div>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="zoom">
+        <button class="icon-btn" id="z-out" data-i18n-title="zoom.out"><svg class="i"><use href="#i-minus"/></svg></button>
+        <input type="range" id="z-range" data-i18n-title="zoom.label" min="50" max="200" step="10" value="100" />
+        <button class="icon-btn" id="z-in" data-i18n-title="zoom.in"><svg class="i"><use href="#i-plus"/></svg></button>
+        <span class="zv" id="z-val">100%</span>
+      </div>
+    </footer>
+  </div>
+
+  <div id="layer"></div>
+  <div class="snack" id="snack" role="status" aria-live="polite"><span class="st" id="snack-t"></span><button class="btn text" id="snack-a" hidden></button></div>
+  <div id="print-root"></div>
+
+  <script src="vendor/exceljs.min.js"></script>
+  <script src="vendor/mcu.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

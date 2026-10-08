@@ -1,8 +1,9 @@
 // Export dialog: fast WebCodecs pipeline (default) with a real-time MediaRecorder fallback.
-// The last-used options are remembered in settings.export.
+// Defaults every time: MP4 (H.264 + AAC) · 1080p · 60 fps. Quality and method are remembered.
 import { state, dims, totalDuration } from './store.js';
-import { exportVideo, supportedMime, isExporting } from './engine.js';
-import { exportFast, fastFormats } from './export-fast.js';
+import { exportVideo, supportedMime, isExporting, releaseForExport, invalidate } from './engine.js';
+import { cancelProxies, holdProxies } from './proxy.js';
+import { exportFast, fastFormats, FAST_FORMATS } from './export-fast.js';
 import { pickSavePath, pickDirectory, fileExists, createFileWriter, ffmpegAvailable, tempPath, removeTemp, ffmpegConvert, inTauri } from './io.js';
 import { settings, saveSettings } from './settings.js';
 import { $, h, stripExt, fmtTime, icon } from './util.js';
@@ -17,28 +18,69 @@ export const setExportToast = (f) => { toast = f; };
 const RES = [[480, '480p'], [720, '720p HD'], [1080, '1080p Full HD'], [1440, '1440p 2K'], [2160, '2160p 4K']];
 const QUALITY = [['standard', 0.07], ['high', 0.12], ['max', 0.2]];
 
+// Encoder probing can take seconds on some GPUs, so the answer is remembered between launches and refreshed in the background.
+const FMT_KEY = 'mve.exfmt.v1';
+let fmtCache = null, fmtReady = false;
+const fromIds = (ids) => {
+  const list = FAST_FORMATS.filter((f) => ids.includes(f.id)).map((f) => ({ ...f, fast: true }));
+  const mp4 = supportedMime('mp4'), webm = supportedMime('webm');
+  if (mp4 && !list.some((f) => f.id === 'mp4')) list.push({ id: 'mp4', label: 'MP4 (H.264)', mime: mp4, ext: 'mp4', fast: false });
+  if (webm && !list.some((f) => f.id === 'webm')) list.push({ id: 'webm', label: 'WebM (VP9)', ext: 'webm', mime: webm, fast: false });
+  return list;
+};
+const probe = () => formats().then((l) => {
+  try { localStorage.setItem(FMT_KEY, JSON.stringify(l.filter((f) => f.fast).map((f) => f.id))); } catch { /* storage unavailable */ }
+  return l;
+});
+try {
+  const ids = JSON.parse(localStorage.getItem(FMT_KEY) || 'null');
+  if (Array.isArray(ids) && ids.length) { fmtCache = Promise.resolve(fromIds(ids)); fmtReady = true; }
+} catch { /* ignore */ }
+const loadFormats = () => (fmtCache ||= probe().then((l) => { fmtReady = true; return l; }));
+/** Probe encoders in the background so the export window opens instantly. */
+export const warmExport = () => setTimeout(() => { probe().then((l) => { fmtCache = Promise.resolve(l); fmtReady = true; }).catch(() => {}); }, 2500);
+
 async function formats() {
   const list = [];
   for (const f of await fastFormats()) list.push({ ...f, fast: true });
   const mp4 = supportedMime('mp4'), webm = supportedMime('webm');
   if (mp4 && !list.some((f) => f.id === 'mp4')) list.push({ id: 'mp4', label: 'MP4 (H.264)', mime: mp4, ext: 'mp4', fast: false });
   if (webm && !list.some((f) => f.id === 'webm')) list.push({ id: 'webm', label: 'WebM (VP9)', ext: 'webm', mime: webm, fast: false });
-  if (webm && (await ffmpegAvailable())) list.push({ id: 'mp4-ff', label: t('export.mp4ffmpeg'), mime: webm, ext: 'mp4', convert: true, fast: false });
+  if (webm && (await ffmpegAvailable())) list.push({ id: 'mp4-ff', label: null, labelKey: 'export.mp4ffmpeg', mime: webm, ext: 'mp4', convert: true, fast: false });
   return list;
 }
 // real-time recording can only produce the same container as the chosen format
 const rtMime = (f) => f.mime || supportedMime(f.ext === 'mp4' ? 'mp4' : 'webm');
 
+let opening = false, running = false;
+dlg.addEventListener('close', () => { if (!running) holdProxies(false); });
+
 export async function openExport() {
-  if (isExporting()) return;
+  if (running || isExporting()) { toast(t('export.cleaning')); return; }
+  if (opening) return;
   if (totalDuration() <= 0) { toast(t('export.empty')); return; }
-  const fmts = await formats();
+  opening = true;
+  holdProxies(true); // background preview optimisation pauses while the window is open
+  try {
+    bodyEl.onchange = null;
+    actionsEl.replaceChildren(h('button', { class: 'btn text', text: t('btn.cancel'), onclick: () => dlg.close() }));
+    if (!fmtReady) {
+      // first time: show the window right away with a small loader while encoders are probed
+      bodyEl.replaceChildren(h('div', { class: 'loading-row' }, h('i', { class: 'spinner' }), h('span', { text: t('export.preparing') })));
+      if (!dlg.open) dlg.showModal();
+    }
+    const fmts = await loadFormats();
+    render(fmts);
+    if (!dlg.open) dlg.showModal();
+  } finally { opening = false; }
+}
+
+function render(fmts) {
   bodyEl.replaceChildren();
   actionsEl.replaceChildren();
   if (!fmts.length) {
     bodyEl.append(h('p', { text: t('export.unsupported') }));
     actionsEl.append(h('button', { class: 'btn text', text: t('btn.close'), onclick: () => dlg.close() }));
-    dlg.showModal();
     return;
   }
   const S = settings.export;
@@ -58,17 +100,17 @@ export async function openExport() {
     const d = await pickDirectory(dirInp.value || S.lastDir);
     if (d) { dirInp.value = d; S.lastDir = d; saveSettings(); }
   } }, icon('open'), t('settings.choose'));
-  const clearDir = h('button', { class: 'icon-btn sm', type: 'button', title: t('btn.clear'), onclick: () => { dirInp.value = ''; } }, icon('close'));
+  const clearDir = h('button', { class: 'btn text sm', type: 'button', text: t('btn.clear'), onclick: () => { dirInp.value = ''; } });
   bodyEl.append(
-    h('div', { class: 'f-row' }, h('label', { text: t('export.fileName') }), h('div', { class: 'name-row' }, nameInp, extTag)),
-    inTauri ? h('div', { class: 'f-row' }, h('label', { text: t('export.saveTo') }), h('div', { class: 'dir-row' }, dirInp, browse, clearDir)) : h('span'),
-    sel('ex-format', t('export.format'), fmts.map((f) => [f.id, f.label]), S.format),
-    sel('ex-res', t('export.resolution'), RES.map(([v, l]) => [String(v), l]), S.res),
-    sel('ex-fps', t('export.fps'), fpsOpts, S.fps),
+    h('div', { class: 'f-row' }, h('label', { text: t('export.fileName') }), h('div', { class: 'input-suffix' }, nameInp, extTag)),
+    sel('ex-format', t('export.format'), fmts.map((f) => [f.id, f.label || t(f.labelKey)]), 'mp4'),
+    h('div', { class: 'grid2' },
+      sel('ex-res', t('export.resolution'), RES.map(([v, l]) => [String(v), l]), '1080'),
+      sel('ex-fps', t('export.fps'), fpsOpts, '60')),
     sel('ex-q', t('export.quality'), QUALITY.map(([k]) => [k, t('export.q.' + k)]), S.q),
-    hasFast ? sel('ex-mode', t('export.mode'), modeOpts, S.mode) : h('span'),
     h('div', { class: 'insp-info', id: 'ex-info' }),
     h('p', { class: 'hint', id: 'ex-note' }),
+    inTauri ? h('div', { class: 'f-row' }, h('label', { text: t('export.saveTo') }), h('div', { class: 'dir-field' }, dirInp, h('div', { class: 'dir-actions' }, browse, clearDir))) : h('span'),
   );
   const info = $('#ex-info', bodyEl);
   const params = () => {
@@ -77,7 +119,7 @@ export async function openExport() {
     const fps = +$('#ex-fps').value;
     const q = $('#ex-q').value;
     const bpp = QUALITY.find(([k]) => k === q)[1];
-    const mode = f.fast && $('#ex-mode') && $('#ex-mode').value === 'fast' ? 'fast' : (rtMime(f) ? 'realtime' : 'fast');
+    const mode = f.fast ? 'fast' : 'realtime'; // the real-time recorder is only used when WebCodecs is unavailable
     const base = (nameInp.value || '').replace(/[\\/:*?"<>|]/g, '_').replace(/\.(mp4|webm|mov)$/i, '').trim() || defName;
     return { f, w, h: hh, fps, q, mode, bitrate: Math.round(w * hh * fps * bpp), name: base, dir: dirInp.value };
   };
@@ -98,16 +140,21 @@ export async function openExport() {
     h('span', { class: 'spacer' }),
     h('button', { class: 'btn filled', text: t('export.start'), onclick: () => run(params()) }),
   );
-  dlg.showModal();
 }
 
 function remember(p) {
-  Object.assign(settings.export, { format: p.f.id, res: String(Math.min(p.w, p.h)), fps: String(p.fps), q: p.q });
+  // format / resolution / frame rate always start at MP4 · 1080p · 60 fps; only quality and method are remembered
+  settings.export.q = p.q;
   if (p.f.fast && rtMime(p.f)) settings.export.mode = p.mode;
   saveSettings();
 }
 
 async function run(p) {
+  running = true;
+  try { await runExport(p); } finally { running = false; holdProxies(false); invalidate(); }
+}
+
+async function runExport(p) {
   remember(p);
   const file = `${p.name}.${p.f.ext}`;
   const sep = (d) => (d.includes('\\') && !d.includes('/') ? '\\' : '/');
@@ -130,9 +177,15 @@ async function run(p) {
   const bar = h('div', { class: 'progress' }, h('i'));
   const label = h('div', { class: 'progress-label' });
   const pct = h('div', { class: 'progress-pct', text: '0%' });
-  bodyEl.replaceChildren(label, bar, pct, h('p', { class: 'hint', text: t('export.keepOpen') }));
-  actionsEl.replaceChildren(h('button', { class: 'btn text', text: t('btn.cancel'), onclick: () => ctl.abort() }));
-  dlg.oncancel = (e) => { e.preventDefault(); ctl.abort(); };
+  const diagEl = h('p', { class: 'hint diag' });
+  const stats = {};
+  bodyEl.replaceChildren(label, bar, pct, h('p', { class: 'hint', text: t('export.keepOpen') }), diagEl);
+  // Cancel closes the window immediately; the pipeline unwinds and removes the partial file in the background
+  let cancelled = false;
+  const cancel = () => { if (cancelled) return; cancelled = true; ctl.abort(); dlg.close(); toast(t('export.cancelled')); };
+  actionsEl.replaceChildren(h('button', { class: 'btn text', text: t('btn.cancel'), onclick: cancel }));
+  dlg.oncancel = (e) => { e.preventDefault(); cancel(); };
+  cancelProxies(); releaseForExport();
   const started = performance.now();
   const setBar = (v) => { bar.firstChild.style.width = v * 100 + '%'; };
 
@@ -140,22 +193,32 @@ async function run(p) {
     let done = false;
     if (p.f.fast && p.mode === 'fast') {
       label.textContent = t('export.rendering');
-      try {
+      const attempt = async (safe) => {
         const blob = await exportFast({
-          width: p.w, height: p.h, fps: p.fps, bitrate: p.bitrate, format: p.f, path: inTauri ? target : null, signal: ctl.signal,
+          width: p.w, height: p.h, fps: p.fps, bitrate: p.bitrate, format: p.f, path: inTauri ? target : null, signal: ctl.signal, safe,
+          onPhase: () => { label.textContent = t('export.finishing'); pct.textContent = '100%'; },
           onProgress(v, i) {
             setBar(v);
             pct.textContent = `${Math.round(v * 100)}%  ·  ${t('export.speed', { x: i.speed.toFixed(1), eta: fmtTime(i.eta, false) })}`;
+            if (i.diag) diagEl.textContent = i.diag;
           },
+          stats,
         });
         if (blob) await saveBlobBrowser(blob, target);
+      };
+      try {
+        try { await attempt(false); } catch (err) {
+          if (err && err.name === 'AbortError') throw err;
+          console.warn('fast export failed, retrying in safe mode', err);
+          setBar(0); label.textContent = t('export.retry');
+          await attempt(true); // same fast pipeline with conservative encoder settings
+        }
         done = true;
       } catch (err) {
         if (err && err.name === 'AbortError') throw err;
         console.warn('fast export failed', err);
-        if (!rtMime(p.f)) throw err;
-        toast(t('export.fallback'));
-        setBar(0);
+        // the real-time recorder is slow, memory hungry and can produce broken files → only used when the fast path is unavailable
+        throw err;
       }
     }
     if (!done) {
@@ -178,10 +241,10 @@ async function run(p) {
         try { await ffmpegConvert(file, target); } finally { await removeTemp(file); }
       }
     }
-    finish(t('export.done'), t('export.savedTo', { path: target }));
+    finish(t('export.done'), t('export.savedTo', { path: target }), stats.report ? `${fmtTime((performance.now() - started) / 1000, false)} · ${stats.report}` : '');
   } catch (err) {
-    if (err && err.name === 'AbortError') { dlg.close(); toast(t('export.cancelled')); }
-    else finish(t('export.failed'), String((err && err.message) || err));
+    if (err && err.name === 'AbortError') { if (!cancelled) { dlg.close(); toast(t('export.cancelled')); } }
+    else finish(t('export.failed'), String((err && err.message) || err), stats.report || diagEl.textContent);
   } finally {
     dlg.oncancel = null;
   }
@@ -196,7 +259,7 @@ function saveBlobBrowser(blob, name) {
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
 }
 
-function finish(title, msg) {
-  bodyEl.replaceChildren(h('h3', { text: title }), h('p', { class: 'path', text: msg }));
+function finish(title, msg, diag = '') {
+  bodyEl.replaceChildren(h('h3', { text: title }), h('p', { class: 'path', text: msg }), diag ? h('p', { class: 'hint diag', text: diag }) : h('span'));
   actionsEl.replaceChildren(h('span', { class: 'spacer' }), h('button', { class: 'btn filled', text: t('btn.done'), onclick: () => dlg.close() }));
 }

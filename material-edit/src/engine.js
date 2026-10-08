@@ -97,6 +97,9 @@ export function resetEngine() {
   invalidate();
 }
 
+/** Frees every <video>/<audio> element so the exporter has the machine to itself. */
+export function releaseForExport() { pause(); resetEngine(); }
+
 export function fadeFactor(c, lt) {
   let f = 1;
   if (c.fadeIn > 0 && lt < c.fadeIn) f *= lt / c.fadeIn;

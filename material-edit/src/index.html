@@ -192,10 +192,12 @@
       </section>
       <section id="sec-exdir">
         <h3 data-i18n="settings.exportDir"></h3>
-        <div class="dir-row">
+        <div class="dir-field">
           <input class="field" id="inp-exdir" type="text" readonly data-i18n-ph="settings.exportDirNone" />
-          <button class="btn tonal sm" id="btn-exdir"><svg class="i"><use href="#i-open"/></svg><span data-i18n="settings.choose"></span></button>
-          <button class="icon-btn sm" id="btn-exdir-clear" data-i18n-title="btn.clear"><svg class="i"><use href="#i-close"/></svg></button>
+          <div class="dir-actions">
+            <button class="btn tonal sm" id="btn-exdir"><svg class="i"><use href="#i-open"/></svg><span data-i18n="settings.choose"></span></button>
+            <button class="btn text sm" id="btn-exdir-clear"><span data-i18n="btn.clear"></span></button>
+          </div>
         </div>
         <p class="hint" data-i18n="settings.exportDirHint"></p>
       </section>

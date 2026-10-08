@@ -6,6 +6,7 @@ import { inTauri, createFileWriter, tempPath, removeTemp, fileSize, serveFile } 
 import { emit, getMedia } from './store.js';
 import { invalidate } from './engine.js';
 import { settings } from './settings.js';
+import { yieldNow } from './util.js';
 
 const LONG_SIDE = 1280;
 const jobs = new Map(); // mediaId -> AbortController
@@ -29,6 +30,10 @@ export function queueProxy(m) {
     emit('proxy', m);
   });
 }
+
+/** While held (export window open), background proxy jobs pause so the UI stays responsive. */
+let held = false;
+export const holdProxies = (v) => { held = v; };
 
 export function cancelProxies() { for (const c of jobs.values()) c.abort(); }
 
@@ -73,6 +78,8 @@ async function run(m, ctl) {
       for (let i = 0; i < total; i++) {
         if (signal.aborted || !getMedia(m.id)) throw new DOMException('cancelled', 'AbortError');
         if (fail) throw fail;
+        while (held && !signal.aborted) await sleep(150);
+        await yieldNow();
         await fs.prepare(i / fps);
         g.drawImage(fs.cur.src, 0, 0, W, H);
         const f = new VideoFrame(cv, { timestamp: Math.round((i * 1e6) / fps), duration: Math.round(1e6 / fps) });

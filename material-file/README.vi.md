@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="src/assets/logo.svg" alt="Logo Material File" width="120" height="120">
+<img src="src/assets/logo.svg" alt="Material File logo" width="120" height="120">
 
 # Material File
 
@@ -12,6 +12,8 @@
 ![Rust](https://img.shields.io/badge/Rust-1.77%2B-DEA584?logo=rust&logoColor=white)
 ![Design](https://img.shields.io/badge/Design-Material%203-6750A4)
 ![License](https://img.shields.io/badge/License-MIT-green)
+![Author](https://img.shields.io/badge/Tác giả-minhtrong67-6750A4)
+![AI](https://img.shields.io/badge/AI-Claude-D97757)
 
 </div>
 
@@ -19,21 +21,31 @@
 
 ## Giới thiệu
 
-Material File giữ lại những phần của File Explorer mà bạn dùng hằng ngày — truy cập nhanh, ổ đĩa,
-thanh địa chỉ dạng breadcrumb, chế độ xem chi tiết và biểu tượng, sao chép / cắt / dán, đổi tên,
-thùng rác và tìm kiếm — và lược bỏ phần còn lại. Ứng dụng khởi động nhanh, tốn ít bộ nhớ
-(Tauri + WebView của hệ thống) và theo phong cách **Material Design 3** của Google.
+Material File giữ lại những phần của File Explorer mà bạn dùng hằng ngày — truy cập nhanh, ổ đĩa, thẻ thư mục, breadcrumb, chế độ xem chi tiết và biểu tượng, sao chép / cắt / dán, đổi tên, thùng rác, tìm kiếm và ngăn chi tiết — và lược bỏ phần còn lại. Ứng dụng khởi động nhanh, tốn ít bộ nhớ (Tauri + WebView của hệ thống) và theo phong cách **Material Design 3** của Google.
+
+## Ảnh chụp màn hình
+
+<p align="center">
+  <img src="screenshots/image01.png" alt="Material File - light theme" width="49%">
+  <img src="screenshots/image02.png" alt="Material File - dark theme" width="49%">
+</p>
+<p align="center">
+  <img src="screenshots/image03.png" alt="Material File - icon view and details pane" width="49%">
+  <img src="screenshots/image04.png" alt="Material File - context menu and settings" width="49%">
+</p>
 
 ## Tính năng
 
 | Nhóm | Nội dung |
 | --- | --- |
-| **Điều hướng** | Quay lại / tiến tới / lên một cấp / làm mới, thanh địa chỉ breadcrumb có thể gõ trực tiếp, truy cập nhanh (Trang chủ, Màn hình nền, Tài liệu, Tải xuống, Hình ảnh, Nhạc, Video), *Máy tính này* với thanh dung lượng ổ đĩa |
-| **Chế độ xem** | Chi tiết với các cột sắp xếp được (tên, ngày sửa đổi, loại, kích thước) và biểu tượng lớn có ảnh thu nhỏ; thư mục luôn hiện trước |
-| **Thao tác tệp** | Tạo thư mục / tài liệu văn bản, cắt, sao chép, dán, đổi tên ngay trên dòng (`F2`), xoá vào Thùng rác hoặc xoá vĩnh viễn (`Shift+Delete`), kéo thả để di chuyển (giữ `Ctrl` để sao chép), tự đặt tên không trùng khi xung đột |
-| **Chọn mục** | Click, `Ctrl`/`Shift` chọn nhiều, `Ctrl+A`, điều hướng đầy đủ bằng bàn phím và gõ chữ để nhảy tới mục |
+| **Điều hướng** | **Trang chủ** như Windows 11 (thẻ truy cập nhanh, thư mục thường dùng, tệp gần đây, ổ đĩa), quay lại / tiến tới / lên / làm mới (chuột phải vào nút quay lại / tiến tới để xem **lịch sử**), thanh địa chỉ breadcrumb gõ trực tiếp được (bấm `›` để nhảy vào thư mục con), **cây thư mục** ở thanh bên tự mở tới thư mục hiện tại, thư mục đã ghim, *Máy tính này* với thanh dung lượng ổ đĩa, lối tắt Thùng rác, **thẻ thư mục** (`Ctrl+T`, nhấn chuột giữa vào thư mục) |
+| **Chế độ xem** | Chi tiết với **cột kéo giãn và bật / tắt được** (tên, ngày sửa đổi, ngày tạo, loại, kích thước), biểu tượng nhỏ / vừa / lớn có ảnh thu nhỏ, **Nhóm theo** (tên, loại, ngày sửa đổi, kích thước), **bộ lọc loại tệp**, **ô chọn mục** tuỳ chọn, **ngăn chi tiết** tuỳ chọn (xem trước ảnh và văn bản, `Alt+P`), bật / tắt mục ẩn và đuôi tên tệp |
+| **Thao tác tệp** | Tạo thư mục / văn bản / Markdown / JSON / HTML / CSV, cắt, sao chép, dán với hộp thoại xử lý trùng tên **Thay thế / Bỏ qua / Giữ cả hai**, đổi tên ngay trên dòng (`F2`) và **đổi tên hàng loạt**, xoá vào Thùng rác hoặc xoá vĩnh viễn, **hoàn tác** (`Ctrl+Z`), kéo thả để di chuyển (giữ `Ctrl` để sao chép), chọn bằng cách kéo khung |
+| **Menu chuột phải** | Menu kiểu Windows cho tệp, thư mục, thanh bên và vùng trống: *Mở*, *Mở trong thẻ mới*, **Mở trong Terminal**, **Mở bằng Code**, *Mở bằng* (Notepad, WinRAR), *Hiện trong File Explorer*, *Ghim vào Truy cập nhanh*, **Sao chép dưới dạng đường dẫn**, cắt / sao chép / đổi tên / xoá, *Thuộc tính*, cùng menu con Xem / Sắp xếp theo / Mới |
+| **Tệp nén** | **Giải nén tại đây / vào thư mục** và **Nén thành ZIP / RAR** bằng **WinRAR** khi đã cài (dự phòng 7-Zip, rồi PowerShell / `tar` cho ZIP) |
+| **Đường dẫn** | Đường dẫn dài không còn tràn: thanh địa chỉ luôn hiện các thư mục sâu nhất, hộp thoại tự xuống dòng, và có **nút sao chép đường dẫn** ở thanh địa chỉ và hộp thoại Thuộc tính |
 | **Tìm kiếm** | Lọc tức thì khi gõ; nhấn `Enter` để tìm trong thư mục hiện tại và mọi thư mục con |
-| **Chi tiết** | Hộp thoại Thuộc tính (kích thước, nội dung, ngày tháng, thuộc tính) cho một hoặc nhiều mục; thanh trạng thái hiển thị số mục và dung lượng đã chọn |
+| **Cửa sổ** | **Ghi nhớ** kích thước, vị trí và trạng thái phóng to của cửa sổ; tuỳ chọn **“Luôn mở ở chế độ toàn màn hình”** (`F11` bật / tắt bất cứ lúc nào) |
 | **Giao diện** | Sáng / tối / theo hệ thống, **màu chủ đề tuỳ chỉnh** (màu có sẵn + bộ chọn màu), phông system-ui, chuyển động kiểu Material (ripple, chuyển cảnh hộp thoại và menu; tôn trọng cài đặt giảm chuyển động) |
 | **Ngôn ngữ** | Tiếng Anh và Tiếng Việt, đổi ngay khi đang chạy; tự nhận diện ở lần mở đầu tiên |
 | **Đóng gói** | Icon ứng dụng, icon trình cài đặt, icon gỡ cài đặt cùng hình cho bộ cài NSIS / MSI, đều theo phong cách Material 3 |
@@ -43,27 +55,79 @@ thùng rác và tìm kiếm — và lược bỏ phần còn lại. Ứng dụng
 | Thao tác | Phím tắt | Thao tác | Phím tắt |
 | --- | --- | --- | --- |
 | Mở | `Enter` | Cắt / Sao chép / Dán | `Ctrl+X` / `Ctrl+C` / `Ctrl+V` |
-| Lùi / Tiến / Lên | `Backspace` hoặc `Alt+←` / `Alt+→` / `Alt+↑` | Chọn tất cả | `Ctrl+A` |
-| Thanh địa chỉ | `Ctrl+L` hoặc `Alt+D` | Thư mục mới | `Ctrl+Shift+N` |
+| Lùi / Tiến / Lên | `Backspace` / `Alt+←` / `Alt+→` / `Alt+↑` | Sao chép đường dẫn | `Ctrl+Shift+C` |
+| Thanh địa chỉ | `Ctrl+L` / `Alt+D` | Hoàn tác | `Ctrl+Z` |
 | Tìm kiếm | `Ctrl+F` | Đổi tên | `F2` |
-| Làm mới | `F5` | Xoá / xoá vĩnh viễn | `Del` / `Shift+Del` |
-| Xem chi tiết / biểu tượng | `Ctrl+1` / `Ctrl+2` | Thuộc tính | `Alt+Enter` |
+| Thẻ mới / Đóng thẻ / Thẻ kế | `Ctrl+T` / `Ctrl+W` / `Ctrl+Tab` | Xoá / xoá vĩnh viễn | `Del` / `Shift+Del` |
+| Thư mục mới | `Ctrl+Shift+N` | Thuộc tính | `Alt+Enter` |
+| Xem chi tiết / biểu tượng | `Ctrl+1` / `Ctrl+2` | Ngăn chi tiết | `Alt+P` |
+| Làm mới | `F5` | Toàn màn hình | `F11` |
 | Cài đặt | `Ctrl+,` | Xoá tìm kiếm hoặc bỏ chọn | `Esc` |
+
+## Tải về
+
+Tải bộ cài Windows mới nhất (`Material File_x.y.z_x64-setup.exe`) tại trang **[Releases](https://github.com/minhtrong67/material-file/releases/latest)** Releases.
+
+## Cài đặt
+
+1. Tải và chạy bộ cài — cài cho người dùng hiện tại, không cần quyền quản trị.
+2. Mở **Material File** từ menu Start.
+3. Tuỳ chọn: cài [WinRAR](https://www.win-rar.com) để giải nén / nén RAR, 7z, ZIP và [VS Code](https://code.visualstudio.com) (có `code` trong `PATH`) cho **Mở bằng Code**.
+
+## Công nghệ sử dụng
+
+| Lớp | Công nghệ |
+| --- | --- |
+| Khung ứng dụng | [Tauri 2](https://tauri.app) |
+| Backend | Rust — [`trash`](https://crates.io/crates/trash), [`sysinfo`](https://crates.io/crates/sysinfo), [`open`](https://crates.io/crates/open), [`dirs`](https://crates.io/crates/dirs), [`tauri-plugin-window-state`](https://crates.io/crates/tauri-plugin-window-state) |
+| Giao diện | HTML / CSS / JavaScript thuần (không cần bundler) |
+| Thiết kế | Material Design 3 (bảng màu OKLCH sinh từ một màu gốc) |
+| Công cụ | npm (Tauri CLI), Python + Pillow (tạo icon) |
+
+## Phát triển
+
+Yêu cầu:
+
+- [Rust](https://rustup.rs) 1.77+
+- [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (Windows: Microsoft C++ Build Tools và WebView2)
+- [Node.js](https://nodejs.org) (npm)
+
+```bash
+cd material-file
+
+npm install        # một lần: cài Tauri CLI
+npm run dev        # chạy chế độ phát triển
+```
+
+Dự án được thiết kế để nằm trong Cargo workspace (`members = ["*/src-tauri"]`) và dùng chung thư mục `target/`. Nếu muốn dùng riêng lẻ, thêm bảng `[workspace]` rỗng vào `src-tauri/Cargo.toml`.
+
+Để tạo lại toàn bộ icon (ứng dụng, cài đặt, gỡ cài đặt, hình NSIS / MSI): `pip install pillow` rồi `python tools/generate_icons.py`.
+
+## Build
+
+```bash
+npm run build
+```
+
+Bộ cài nằm trong `<workspace>/target/release/bundle/` (`nsis/` cho file `.exe`, `msi/` cho file `.msi`).
+
+> **Về icon gỡ cài đặt.** File `icons/installer/uninstall.ico` đã được tạo sẵn, nhưng mẫu NSIS của Tauri dùng chung một `installerIcon` cho cả trình cài đặt và trình gỡ cài đặt.
 
 ## Cấu trúc dự án
 
 ```
 material-file/
+├── screenshots/              # image01.png, image02.png, ... used by this README
 ├── src/                      # Giao diện (HTML / CSS / JS thuần, không cần bundler)
 │   ├── index.html
-│   ├── styles.css            # Token và component Material Design 3
+│   ├── styles.css            # Material Design 3 tokens and components
 │   ├── theme.js              # Màu gốc → bảng màu M3, sáng/tối/hệ thống
 │   ├── boot.js               # Áp dụng theme đã lưu trước lần vẽ đầu tiên
 │   ├── i18n.js               # Chuỗi tiếng Anh + tiếng Việt
-│   ├── app.js                # Điều hướng, danh sách, chọn mục, thao tác tệp
+│   ├── app.js                # Điều hướng, thẻ, danh sách, chọn mục, menu, thao tác tệp
 │   └── assets/logo.svg
 ├── src-tauri/                # Backend Rust
-│   ├── src/main.rs           # Lệnh liệt kê / tìm / sao chép / di chuyển / đổi tên / thùng rác / ổ đĩa
+│   ├── src/main.rs           # lệnh liệt kê / tìm / sao chép / di chuyển / đổi tên / thùng rác / ổ đĩa / tệp nén / công cụ
 │   ├── tauri.conf.json       # Cửa sổ, đóng gói, trình cài đặt
 │   ├── capabilities/         # Quyền của Tauri
 │   └── icons/                # Icon ứng dụng + installer/ (icon cài đặt & gỡ cài đặt, hình ảnh)
@@ -73,51 +137,16 @@ material-file/
 └── README.md
 ```
 
-## Yêu cầu
+### Giới hạn
 
-- [Rust](https://rustup.rs) 1.77 trở lên
-- [Điều kiện tiên quyết của Tauri](https://v2.tauri.app/start/prerequisites/) cho hệ điều hành của bạn
-  (Windows: Microsoft C++ Build Tools và WebView2, đã có sẵn trên Windows 10/11)
-- [Node.js](https://nodejs.org) (npm) — cài Tauri CLI từ `package.json`
-- Tuỳ chọn, để tạo lại icon: Python 3 và `pip install pillow`
-
-## Bắt đầu
-
-```bash
-cd material-file
-
-npm install        # một lần: cài Tauri CLI
-npm run dev        # chạy chế độ phát triển
-npm run build      # build bộ cài đặt
-```
-
-Dự án được thiết kế để nằm trong Cargo workspace (`members = ["*/src-tauri"]`) và dùng chung thư mục
-`target/`. File build nằm ở `<workspace>/target/release/bundle/`. Nếu muốn dùng riêng lẻ, thêm bảng
-`[workspace]` rỗng vào `src-tauri/Cargo.toml`.
-
-> **Về icon gỡ cài đặt.** File `icons/installer/uninstall.ico` đã được tạo sẵn, nhưng mẫu NSIS của Tauri
-> dùng chung một `installerIcon` cho cả trình cài đặt và trình gỡ cài đặt.
-
-## Cách hoạt động
-
-Giao diện viết bằng JavaScript thuần. Mọi thao tác với hệ thống tệp nằm trong các lệnh Rust:
-`list_dir`, `search_dir`, `paste_items`, `rename_item`, `create_item`, `delete_items`
-(qua crate [`trash`](https://crates.io/crates/trash)), `item_properties`, `get_drives`
-(qua [`sysinfo`](https://crates.io/crates/sysinfo)) và `open_item` (qua
-[`open`](https://crates.io/crates/open)). Ảnh thu nhỏ dùng asset protocol của Tauri.
-
-## Giới hạn
-
-- Cắt / sao chép / dán hoạt động trong phạm vi ứng dụng; không trao đổi tệp với clipboard hệ thống
-  hay với ứng dụng khác.
-- Dán không bao giờ ghi đè: khi trùng tên, tệp mới được đặt tên duy nhất như `file (2).txt`.
-- Danh sách thư mục không ảo hoá (dùng `content-visibility` để giữ mượt); thư mục cực lớn có thể mất
-  một lúc để tải.
+- Cắt / sao chép / dán hoạt động trong phạm vi ứng dụng; không trao đổi tệp với clipboard hệ thống hay ứng dụng khác.
+- Khi dán trùng tên, ứng dụng hỏi bạn thay thế, bỏ qua hay giữ cả hai (đặt tên như `file (2).txt`).
+- Hoàn tác áp dụng cho đổi tên, tạo mới, sao chép / dán, di chuyển và nén — không áp dụng cho xoá (hãy khôi phục từ Thùng rác).
 - Màu sắc dùng `oklch()` và `color-mix()`, cần WebView2 / WebKit đủ mới.
 
 ## Ghi công
 
-Tác giả: **minhtrong67**, với sự hỗ trợ của **Claude**, trợ lý AI của [Anthropic](https://www.anthropic.com).
+Tác giả: **minhtrong67** với sự hỗ trợ của trợ lý AI **Claude** ([Anthropic](https://www.anthropic.com)).
 
 ## Giấy phép
 

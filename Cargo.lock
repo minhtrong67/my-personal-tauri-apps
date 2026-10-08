@@ -2287,6 +2287,7 @@ dependencies = [
  "sysinfo",
  "tauri",
  "tauri-build",
+ "tauri-plugin-window-state",
  "trash",
 ]
 
@@ -2314,6 +2315,21 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-single-instance",
  "walkdir",
+]
+
+[[package]]
+name = "material-xlsx"
+version = "1.0.0"
+dependencies = [
+ "arboard",
+ "base64 0.22.1",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-opener",
+ "tauri-plugin-window-state",
 ]
 
 [[package]]

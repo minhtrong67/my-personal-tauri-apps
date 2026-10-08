@@ -117,6 +117,8 @@ export function createFileWriter(path, type = 'video/mp4') {
         } catch (e) { failed = e; } finally { pending -= copy.byteLength; }
       });
     },
+    /** Drops everything still queued (cancelled/failed export). */
+    abort() { failed = failed || new Error('aborted'); },
     async drain() {
       await chain;
       if (failed) throw failed;
@@ -135,6 +137,10 @@ export function createFileWriter(path, type = 'video/mp4') {
 /** Registers a file with the local media server → { url, size }. */
 export const serveFile = (path) => invoke('serve_file', { path });
 export const fileSize = (path) => invoke('file_size', { path });
+/** Shows a file in the OS file manager. */
+export const revealFile = (path) => (T ? invoke('reveal_file', { path }) : Promise.resolve());
+/** Removes a half-written export. */
+export const deleteExport = (path) => (T && path ? invoke('delete_export', { path }).catch(() => {}) : Promise.resolve());
 
 /** Native OS file drops (Tauri). */
 export async function onFileDrop({ over, leave, drop }) {
