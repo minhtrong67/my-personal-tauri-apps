@@ -19,6 +19,9 @@ export const getVideoDir = () => invoke<string | null>('get_video_dir');
 export const reveal = (path: string) => invoke<void>('reveal_in_explorer', { path });
 export const openWithDefault = (path: string) => invoke<void>('open_with_default', { path });
 export const isDir = (path: string) => invoke<boolean>('is_dir', { path });
+/** Stop/resume remembering the window size (off while in fullscreen or the mini player) */
+export const setWindowTracking = (enabled: boolean) => invoke<void>('set_window_tracking', { enabled }).catch(() => undefined);
+export const setStartFullscreen = (enabled: boolean) => invoke<void>('set_start_fullscreen', { enabled }).catch(() => undefined);
 export const launchArgs = () => invoke<string[]>('get_launch_args');
 
 export async function pickVideos(title: string): Promise<string[]> {

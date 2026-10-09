@@ -103,11 +103,12 @@ export default function App() {
       const k = e.key.toLowerCase();
       const ctrl = e.ctrlKey || e.metaKey;
       if (e.key === 'F5' && s.screen === 'home') { e.preventDefault(); void s.syncLibrary(false, true); return; }
+      if (e.key === 'F11' || (e.key === 'Escape' && s.fullscreen && !s.dialog && !s.menu)) { e.preventDefault(); void s.toggleFullscreen(e.key === 'F11' ? undefined : false); return; }
       if (ctrl && k === 'o') { e.preventDefault(); void (e.shiftKey ? s.openFolder() : s.openFiles()); return; }
       if (ctrl || e.altKey || s.dialog || s.screen !== 'player') return;
       const onRange = el.tagName === 'INPUT';
       const rate = (d: number) => { const r = Math.min(4, Math.max(0.25, Math.round((s.rate + d) * 100) / 100)); s.setRate(r); s.showToast(`${r}×`); };
-      if (e.key === ' ' || k === 'k') { e.preventDefault(); s.togglePlay(); }
+      if (e.key === ' ' || k === 'k') { e.preventDefault(); if (el.tagName === 'BUTTON') el.blur(); s.togglePlay(); }
       else if (e.key === 'ArrowRight' && !onRange) { e.preventDefault(); s.seekBy(s.settings.seekStep); }
       else if (e.key === 'ArrowLeft' && !onRange) { e.preventDefault(); s.seekBy(-s.settings.seekStep); }
       else if (k === 'l') s.seekBy(10);
@@ -115,7 +116,7 @@ export default function App() {
       else if (e.key === 'ArrowUp' && !onRange) { e.preventDefault(); s.setVolume(Math.min(1, s.settings.volume + 0.05)); }
       else if (e.key === 'ArrowDown' && !onRange) { e.preventDefault(); s.setVolume(Math.max(0, s.settings.volume - 0.05)); }
       else if (k === 'm') s.toggleMute();
-      else if (k === 'f' || e.key === 'F11') { e.preventDefault(); void s.toggleFullscreen(); }
+      else if (k === 'f') { e.preventDefault(); void s.toggleFullscreen(); }
       else if (e.key === 'Escape') { if (s.fullscreen) void s.toggleFullscreen(false); else if (s.mini) void s.toggleMini(); else if (s.showQueue) s.set({ showQueue: false }); }
       else if (e.key === '[') rate(-0.25);
       else if (e.key === ']') rate(0.25);

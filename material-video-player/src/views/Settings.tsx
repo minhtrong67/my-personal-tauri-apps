@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Button, Icon, IconButton, Logo, Segmented, Switch } from '../components/ui';
+import { AuthorCredit, Button, Icon, IconButton, Logo, Segmented, Switch } from '../components/ui';
 import { SEED_PRESETS } from '../lib/theme';
 import { useStore } from '../lib/store';
 import { useT } from '../lib/useT';
@@ -15,7 +15,7 @@ function Section({ title, icon, children }: { title: string; icon: string; child
 
 function Row({ title, desc, children }: { title: string; desc?: string; children: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-6">
+    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
       <div className="min-w-0"><div className="text-body-lg">{title}</div>{desc && <div className="text-body-md text-on-surface-variant">{desc}</div>}</div>
       <div className="shrink-0">{children}</div>
     </div>
@@ -88,6 +88,7 @@ export function SettingsView() {
 
       <Section title={t('window')} icon="desktop_windows">
         <Row title={t('alwaysOnTop')}><Switch checked={s.alwaysOnTop} onChange={(v) => update({ alwaysOnTop: v })} /></Row>
+        <Row title={t('startFullscreen')} desc={t('startFullscreenDesc')}><Switch checked={s.startFullscreen} onChange={(v) => update({ startFullscreen: v })} /></Row>
       </Section>
 
       <Section title={t('data')} icon="database">
@@ -102,7 +103,7 @@ export function SettingsView() {
           <div>
             <div className="text-title-md">Material Video Player 1.0.0</div>
             <div className="text-body-md text-on-surface-variant">{t('aboutTagline')}</div>
-            <div className="text-body-md text-on-surface-variant">{t('author')}: <b className="text-on-surface">minhtrong67</b> · {t('withAi')}</div>
+            <div className="mt-1.5"><AuthorCredit /></div>
           </div>
         </div>
         <Button variant="tonal" icon="keyboard" onClick={() => st.openDialog({ type: 'shortcuts' })}>{t('shortcuts')}</Button>

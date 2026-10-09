@@ -128,10 +128,25 @@ function speedBlock(c) {
   return wrap;
 }
 
-function mediaPanel(c, track) {
+/** Edits every selected clip at once: reads come from the first clip, writes go to all clips that have the property. */
+function groupProxy(clips) {
+  const ref = clips[0];
+  const fp = new Proxy(ref.filters, {
+    set(_, k, v) { for (const cl of clips) if (cl.filters) cl.filters[k] = v; return true; },
+  });
+  return new Proxy(ref, {
+    get(tg, k) { return k === 'filters' ? fp : tg[k]; },
+    set(tg, k, v) {
+      for (const cl of clips) if (k in cl) cl[k] = k === 'filters' && v && typeof v === 'object' ? { ...v } : v;
+      return true;
+    },
+  });
+}
+
+function mediaPanel(c, track, group = null) {
   const p = h('div', { class: 'insp' });
   const m = getMedia(c.mediaId);
-  p.append(h('h3', { text: (track === 'overlay' ? t('insp.overlay') : t('insp.clip')) + (m ? ' · ' + m.name : '') }));
+  p.append(h('h3', { text: group ? t('insp.multi', { n: group }) : (track === 'overlay' ? t('insp.overlay') : t('insp.clip')) + (m ? ' · ' + m.name : '') }));
   const tabs = h('div', { class: 'segmented small' });
   for (const [k, l] of [['basic', t('insp.basic')], ['filters', t('insp.filters')]]) {
     tabs.append(h('button', { class: tab === k ? 'on' : '', text: l, onclick() { tab = k; render(true); } }));
@@ -165,8 +180,8 @@ function mediaPanel(c, track) {
     return p;
   }
 
-  p.append(...timingBlock(c, track));
-  if (c.kind === 'video' || c.kind === 'audio') p.append(speedBlock(c));
+  if (!group) p.append(...timingBlock(c, track));
+  if (!group && (c.kind === 'video' || c.kind === 'audio')) p.append(speedBlock(c));
   p.append(heading(t('insp.transform')));
   p.append(slider({ label: t('insp.opacity'), get: () => Math.round(c.opacity * 100), set: (v) => { c.opacity = v / 100; }, min: 0, max: 100, fmt: fmtPct, def: 100 }));
   p.append(h('div', { class: 'f-row' }, h('label', { text: t('insp.fit') }),
@@ -187,7 +202,7 @@ function mediaPanel(c, track) {
   p.append(flips);
   p.append(...fadesBlock(c));
   if (c.kind === 'video') { p.append(heading(t('insp.audio'))); p.append(...audioBlock(c)); }
-  if (track === 'main') {
+  if (track === 'main' && !group) {
     const idx = state.main.indexOf(c);
     p.append(heading(t('insp.transition')));
     if (idx === 0) p.append(h('p', { class: 'hint', text: t('insp.transFirst') }));
@@ -281,7 +296,16 @@ export function render(force = false) {
   const top = root.scrollTop;
   root.replaceChildren();
   let panel;
-  if (multi.length > 1) panel = multiPanel(multi);
+  const vis = multi.filter((i) => i.clip.filters);
+  if (multi.length > 1 && vis.length) {
+    const g = multi.map((i) => i.clip).filter((cl) => vis[0].clip === cl || true);
+    const ordered = [vis[0].clip, ...g.filter((cl) => cl !== vis[0].clip)];
+    panel = mediaPanel(groupProxy(ordered), vis.every((i) => i.track === 'main') ? 'main' : 'overlay', multi.length);
+    panel.append(h('div', { class: 'btn-row' },
+      h('button', { class: 'btn tonal sm', onclick: duplicateSelected }, icon('copy'), t('ctx.duplicate')),
+      h('button', { class: 'btn tonal sm', onclick: deleteSelected }, icon('trash'), t('ctx.delete')),
+      h('button', { class: 'btn text sm', onclick: () => emit('clearsel') }, t('btn.deselect'))));
+  } else if (multi.length > 1) panel = multiPanel(multi);
   else if (!c) panel = projectPanel();
   else if (sel.track === 'text') panel = textPanel(c);
   else if (sel.track === 'audio') panel = audioPanel(c);

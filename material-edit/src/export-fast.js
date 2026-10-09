@@ -36,7 +36,7 @@ export async function pickVideoConfig(fmt, w, h, fps, bitrate, safe = false) {
   const list = fmt.vcodec === 'avc' ? avcCandidates(w, h, fps) : vp9Candidates(w, h, fps);
   for (const codec of list) {
     for (const hw of ['no-preference', 'prefer-software']) {
-      const cfg = { codec, width: w, height: h, bitrate, framerate: fps, latencyMode: safe ? 'realtime' : 'quality', hardwareAcceleration: hw };
+      const cfg = { codec, width: w, height: h, bitrate, bitrateMode: 'variable', framerate: fps, latencyMode: safe ? 'realtime' : 'quality', hardwareAcceleration: hw };
       if (fmt.vcodec === 'avc') cfg.avc = { format: 'avc' };
       try { const r = await VideoEncoder.isConfigSupported(cfg); if (r.supported) return r.config; } catch { /* next */ }
     }
@@ -113,7 +113,7 @@ export class FrameSource {
         if (pl.want >= 0 && meta.mediaTime >= pl.want - pl.gap / 2) {
           if (pl.cv.width !== el.videoWidth || pl.cv.height !== el.videoHeight) { pl.cv.width = el.videoWidth; pl.cv.height = el.videoHeight; }
           pl.g.drawImage(el, 0, 0);
-          pl.t = meta.mediaTime; pl.want = -1;
+          pl.t = meta.mediaTime; pl.want = -1; this.id = pl.t;
           el.pause(); // never run ahead of the exporter
           if (pl.resolve) { const r = pl.resolve; pl.resolve = null; r(); }
         }
@@ -153,6 +153,8 @@ export class FrameSource {
         const f = await this.dec.frameAt(sec);
         if (f) {
           if (this.rot) {
+            if (this.rotId !== f.timestamp) {
+            this.rotId = f.timestamp;
             const g = this.rot.getContext('2d');
             const { rotation: r, width: w, height: h } = this.info;
             g.save();
@@ -160,8 +162,10 @@ export class FrameSource {
             g.rotate((r * Math.PI) / 180);
             g.drawImage(f, -w / 2, -h / 2, w, h);
             g.restore();
+            }
             this.cur = { src: this.rot, w: this.rot.width, h: this.rot.height, m: this.m };
           } else this.cur = { src: f, w: f.displayWidth, h: f.displayHeight, m: this.m };
+          this.id = f.timestamp;
           return;
         }
         this.why = 'no frame returned';
@@ -216,7 +220,11 @@ async function openAudio(signal) {
         let info = await parseMp4Audio(reader);
         if (info === null) continue; // no audio track
         if (info === undefined) info = await parseMp3Audio(reader);
-        if (info && (await AudioStream.supported(info))) { srcs.set(id, { stream: new AudioStream(reader, info) }); continue; }
+        if (info && (await AudioStream.supported(info))) {
+          const stream = new AudioStream(reader, info);
+          try { if (await stream.window(0, 0.3)) { srcs.set(id, { stream }); continue; } } catch { /* decoder rejects this stream → full decode below */ }
+          stream.close();
+        }
       }
     } catch { /* fall through to full decode */ }
     const est = (m.duration || 0) * SR * 2 * 4;
@@ -282,7 +290,7 @@ function diagText(st, sources, started) {
   const all = Math.max(1, performance.now() - started);
   const pc = (k) => Math.round((st[k] / all) * 100);
   const modes = [...new Set([...sources.values()].map((s) => s.mode + (s.why && s.mode !== 'hardware' ? ` (${s.why.slice(0, 200)})` : '')))].join(', ') || '–';
-  return `decode ${pc('prep')}% · draw ${pc('draw')}% · encode ${pc('enc') + pc('wait')}% · audio ${pc('audio')}% · decoder: ${modes}`;
+  return `${st.reused ? `reused ${st.reused}/${st.frames} frames · ` : ''}decode ${pc('prep')}% · draw ${pc('draw')}% · encode ${pc('enc') + pc('wait')}% · audio ${pc('audio')}% · decoder: ${modes}`;
 }
 
 export async function exportFast(o) {
@@ -337,6 +345,7 @@ export async function exportFast(o) {
   const total = Math.max(1, Math.ceil(duration * fps));
   const started = performance.now();
   const keyEvery = Math.round(fps * 2);
+  let base = null, lastKey = null; // last composited picture (re-used while nothing changes)
   let audioDone = 0; // seconds already encoded
   const ABLK = 1; // seconds per audio block
 
@@ -368,9 +377,28 @@ export async function exportFast(o) {
         await s.prepare(c.in + (t - c.start) * c.speed);
       })));
       lap('prep', q0); q0 = performance.now();
-      drawFrame(g, W, H, t, null);
+      // redraw only when something visible changed (a new source frame, a fade, a transition, an animated title)
+      let dirty = !base || !!o.noReuse, key = null;
+      if (!dirty) {
+        const act = [...state.main, ...state.overlay].filter((c) => t >= c.start && t < c.start + c.dur);
+        const txt = state.text.filter((c) => t >= c.start && t < c.start + c.dur);
+        if (state.main.filter((c) => t >= c.start && t < c.start + c.dur).length >= 2) dirty = true; // transition
+        for (const c of act) { const lt = t - c.start; if ((c.fadeIn > 0 && lt < c.fadeIn) || (c.fadeOut > 0 && c.dur - lt < c.fadeOut)) dirty = true; }
+        for (const c of txt) if (c.anim && c.anim !== 'none') dirty = true;
+        if (!dirty) {
+          for (const c of act) { const s = sources.get(c.id); if (c.kind === 'video' && (!s || s.id === undefined)) dirty = true; }
+          key = act.map((c) => c.id + ':' + (sources.get(c.id)?.id ?? 'x')).join('|') + '#' + txt.map((c) => c.id).join(',');
+          if (key !== lastKey) dirty = true;
+        }
+      }
+      if (dirty) {
+        drawFrame(g, W, H, t, null);
+        if (base) base.close();
+        base = new VideoFrame(cv, { timestamp: 0 });
+        lastKey = key;
+      } else st.reused = (st.reused || 0) + 1;
       lap('draw', q0); q0 = performance.now();
-      const frame = new VideoFrame(cv, { timestamp: Math.round((i * 1e6) / fps), duration: Math.round(1e6 / fps) });
+      const frame = new VideoFrame(base, { timestamp: Math.round((i * 1e6) / fps), duration: Math.round(1e6 / fps) });
       venc.encode(frame, { keyFrame: i % keyEvery === 0 });
       frame.close();
       lap('enc', q0); st.frames++;
@@ -401,6 +429,7 @@ export async function exportFast(o) {
     throw e;
   } finally {
     setFrameResolver(null);
+    try { base && base.close(); } catch { /* ignore */ }
     // release decoders/encoders after the UI had a chance to update (closing 4K hardware sessions can block briefly)
     setTimeout(() => {
       for (const a of bufs.values()) if (a.stream) a.stream.close();

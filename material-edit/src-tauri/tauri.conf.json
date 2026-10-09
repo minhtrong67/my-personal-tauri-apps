@@ -44,6 +44,7 @@
     "windows": {
       "nsis": {
         "installerIcon": "icons/installer.ico",
+        "installerHooks": "installer-hooks.nsh",
         "sidebarImage": "icons/nsis-sidebar.bmp",
         "headerImage": "icons/nsis-header.bmp",
         "languages": ["English", "Vietnamese"],

@@ -82,6 +82,7 @@ function sampleTables(d, stbl) {
     const stts = find(d, stbl, 'stts'), ctts = find(d, stbl, 'ctts'), stsc = find(d, stbl, 'stsc');
     const stsz = find(d, stbl, 'stsz'), stss = find(d, stbl, 'stss');
     const stco = find(d, stbl, 'stco'), co64 = find(d, stbl, 'co64');
+    if (!stts || !stsz || !stsc) return { n: 0 }; // fragmented file: samples live in moof boxes
     const n = u32(d, stsz.body + 8);
     const sizes = new Uint32Array(n);
     const fixed = u32(d, stsz.body + 4);
@@ -110,7 +111,7 @@ function sampleTables(d, stbl) {
     const co = [];
     if (stco) { const c = u32(d, stco.body + 4); for (let i = 0; i < c; i++) co.push(u32(d, stco.body + 8 + i * 4)); }
     else if (co64) { const c = u32(d, co64.body + 4); for (let i = 0; i < c; i++) co.push(u64(d, co64.body + 8 + i * 8)); }
-    else return null;
+    else if (n) return null;
     const offsets = new Float64Array(n);
     const sn = u32(d, stsc.body + 4);
     let s = 0;
@@ -125,6 +126,74 @@ function sampleTables(d, stbl) {
     }
     if (s !== n) return null;
   return { n, sizes, dts, cts, keys, offsets };
+}
+
+
+/** Fragmented MP4: collects the samples of one track from every moof box. */
+async function fragTables(reader, trackId, trex) {
+  const sizes = [], dts = [], cts = [], keys = [], offsets = [];
+  let pos = 0, t = 0, any = false;
+  while (pos + 8 <= reader.size) {
+    const head = await reader.read(pos, 16);
+    if (head.length < 8) break;
+    const hv = new DataView(head.buffer, head.byteOffset, head.byteLength);
+    let size = u32(hv, 0);
+    const type = fourcc(hv, 4);
+    if (size === 1) size = u64(hv, 8); else if (size === 0) size = reader.size - pos;
+    if (size < 8) break;
+    if (type === 'moof') {
+      const buf = await reader.read(pos, size, size);
+      const d = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+      for (const traf of boxes(d, 8, buf.length)) {
+        if (traf.type !== 'traf') continue;
+        const tfhd = find(d, traf, 'tfhd');
+        if (!tfhd || u32(d, tfhd.body + 4) !== trackId) continue;
+        const tf = u32(d, tfhd.body) & 0xffffff;
+        let o = tfhd.body + 8, base = pos;
+        if (tf & 1) { base = u64(d, o); o += 8; }
+        if (tf & 2) o += 4;
+        let dDur = trex.dur, dSize = trex.size, dFlags = trex.flags;
+        if (tf & 8) { dDur = u32(d, o); o += 4; }
+        if (tf & 0x10) { dSize = u32(d, o); o += 4; }
+        if (tf & 0x20) { dFlags = u32(d, o); o += 4; }
+        const tfdt = find(d, traf, 'tfdt');
+        if (tfdt) t = d.getUint8(tfdt.body) ? u64(d, tfdt.body + 4) : u32(d, tfdt.body + 4);
+        let cursor = null; // data continues after the previous run when no data_offset is given
+        for (const trun of boxes(d, traf.body, traf.end)) {
+          if (trun.type !== 'trun') continue;
+          const ver = d.getUint8(trun.body), fl = u32(d, trun.body) & 0xffffff, cnt = u32(d, trun.body + 4);
+          let p = trun.body + 8, dataAt = cursor == null ? base : cursor;
+          if (fl & 1) { dataAt = base + d.getInt32(p); p += 4; }
+          let first = null;
+          if (fl & 4) { first = u32(d, p); p += 4; }
+          for (let i = 0; i < cnt; i++) {
+            let dur = dDur, sz = dSize, sf = i === 0 && first != null ? first : dFlags, co = 0;
+            if (fl & 0x100) { dur = u32(d, p); p += 4; }
+            if (fl & 0x200) { sz = u32(d, p); p += 4; }
+            if (fl & 0x400) { const v = u32(d, p); p += 4; if (!(i === 0 && first != null)) sf = v; }
+            if (fl & 0x800) { co = ver ? d.getInt32(p) : u32(d, p); p += 4; }
+            sizes.push(sz); offsets.push(dataAt); dts.push(t); cts.push(t + co);
+            keys.push(sf & 0x10000 ? 0 : 1);
+            dataAt += sz; t += dur; any = true;
+          }
+          cursor = dataAt;
+        }
+      }
+    }
+    pos += size;
+  }
+  if (!any) return null;
+  return { n: sizes.length, sizes: Uint32Array.from(sizes), dts: Float64Array.from(dts), cts: Float64Array.from(cts), keys: Uint8Array.from(keys), offsets: Float64Array.from(offsets) };
+}
+
+/** Track id and fragment defaults (trex) of a trak inside moov. */
+function trackMeta(d, moov, trak) {
+  const tkhd = find(d, trak, 'tkhd');
+  const id = tkhd ? u32(d, tkhd.body + (d.getUint8(tkhd.body) ? 20 : 12)) : 1;
+  const trex = { dur: 0, size: 0, flags: 0 };
+  const mvex = find(d, moov, 'mvex');
+  if (mvex) for (const b of boxes(d, mvex.body, mvex.end)) if (b.type === 'trex' && u32(d, b.body + 4) === id) Object.assign(trex, { dur: u32(d, b.body + 12), size: u32(d, b.body + 16), flags: u32(d, b.body + 20) });
+  return { id, trex };
 }
 
 /** Parses the first video track. Returns null when the file is not an MP4/MOV with a supported codec. */
@@ -181,7 +250,8 @@ export async function parseMp4(reader) {
       rotation = ((Math.round((Math.atan2(b2, a) * 180) / Math.PI) % 360) + 360) % 360;
     }
 
-    const tb = sampleTables(d, stbl);
+    let tb = sampleTables(d, stbl);
+    if (tb && !tb.n) { const mt = trackMeta(d, { body: 8, end: buf.length }, trak); tb = await fragTables(reader, mt.id, mt.trex); }
     if (!tb) return null;
     const { n, sizes, dts, cts, keys, offsets } = tb;
     // presentation order → for "latest frame ≤ time" lookups
@@ -254,10 +324,24 @@ export class SeqDecoder {
     this.next = sample;
     this._open();
   }
-  async _feed() {
-    const i = this.i, s = this.next++;
+  _feed() { return (this.feedQ = (this.feedQ || Promise.resolve()).then(() => this._feed1())); } // strictly in order
+  /** Keeps the decoder busy while the exporter draws/encodes the previous frame. */
+  async _pump() {
+    if (this.pumping || !this.decoder) return;
+    this.pumping = true;
+    const gen = this.gen;
+    try {
+      while (gen === this.gen && this.decoder && !this.error && this.next < this.i.n && this.decoder.decodeQueueSize < 4 && this.frames.length < 6 && this.maxTs <= this.want + 3e6) await this._feed();
+    } catch { /* surfaced by the next frameAt */ }
+    this.pumping = false;
+  }
+  async _feed1() {
+    const i = this.i, gen = this.gen;
+    if (!this.decoder || this.next >= i.n) return;
+    const s = this.next++;
     this.nFed++;
     const data = await this.r.read(i.offsets[s], i.sizes[s], 8 << 20);
+    if (gen !== this.gen || !this.decoder) return;
     this.decoder.decode(new EncodedVideoChunk({
       type: i.keys[s] ? 'key' : 'delta',
       timestamp: Math.round((i.cts[s] / i.timescale) * 1e6),
@@ -301,6 +385,7 @@ export class SeqDecoder {
     if (this.error) throw this.error;
     let pick = this.frames[0];
     for (const f of this.frames) if (f.timestamp <= ts) pick = f; else break;
+    if (pick) this._pump();
     return pick || null;
   }
   close() {
@@ -382,7 +467,8 @@ export async function parseMp4Audio(reader) {
     }
     if (!codec) return undefined;
     if (fmt !== 'mp4a' && fmt !== 'Opus') return undefined;
-    const tb = sampleTables(d, stbl);
+    let tb = sampleTables(d, stbl);
+    if (tb && !tb.n) { const mt = trackMeta(d, { body: 8, end: buf.length }, trak); tb = await fragTables(reader, mt.id, mt.trex); }
     if (!tb) return undefined;
     // edit list: first non-empty edit tells where audio really starts (AAC priming)
     let shift = 0;
@@ -468,17 +554,16 @@ export async function parseMp3Audio(reader) {
   while (pos + 4 <= reader.size) {
     const h = await at(pos, 4);
     if (h.length < 4) break;
-    if (h[0] !== 0xff || (h[1] & 0xe0) !== 0xe0) {
-      if (!offs.length) { pos++; if (pos > 65536) return undefined; continue; } // junk before the first frame
-      // resync
-      pos++; continue;
-    }
+    const bad = h[0] !== 0xff || (h[1] & 0xe0) !== 0xe0;
     const ver = (h[1] >> 3) & 3, layer = (h[1] >> 1) & 3, bi = h[2] >> 4, si = (h[2] >> 2) & 3, pad = (h[2] >> 1) & 1;
-    if (ver === 1 || layer !== 1 || bi === 0 || bi === 15 || si === 3) { pos++; continue; }
+    if (bad || ver === 1 || layer !== 1 || bi === 0 || bi === 15 || si === 3) {
+      if (offs.length < 16) return undefined; // not a clean MP3 stream (e.g. WebM/other data that merely looks like one)
+      pos++; continue; // damaged stretch inside a long file: resync
+    }
     const br = (ver === 3 ? BR1 : BR2)[bi] * 1000, sr = SR[ver][si];
     const len = Math.floor(((ver === 3 ? 144 : 72) * br) / sr) + pad;
     if (!rate) { rate = sr; channels = (h[3] >> 6) === 3 ? 1 : 2; spf = ver === 3 ? 1152 : 576; }
-    if (sr !== rate) { pos++; continue; }
+    if (sr !== rate) { if (offs.length < 16) return undefined; pos++; continue; }
     offs.push(pos); sizes.push(len);
     pos += len;
   }

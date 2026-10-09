@@ -137,8 +137,6 @@ export function hideHome() {
   setTimeout(() => { root.hidden = true; root.classList.remove('leaving'); }, 170);
 }
 
-$('#home-new').addEventListener('click', () => api.create());
-$('#home-open').addEventListener('click', () => api.openFile());
 $('#home-search').addEventListener('input', renderHome);
 $('#home-sort').addEventListener('change', (e) => { settings.home.sort = e.target.value; saveSettings(); renderHome(); });
 $('#home-view').addEventListener('click', (e) => {

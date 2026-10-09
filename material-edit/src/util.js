@@ -42,3 +42,22 @@ export const icon = (id, cls = '') =>
 const yq = []; const yc = new MessageChannel();
 yc.port1.onmessage = () => { const r = yq.shift(); if (r) r(); };
 export const yieldNow = () => new Promise((r) => { yq.push(r); yc.port2.postMessage(0); });
+
+/** Short two-note "done" chime (Web Audio, no asset needed). */
+export function chime() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const a = new Ctx();
+    const t0 = a.currentTime + 0.02;
+    [[659.25, 0], [880, 0.16], [1318.5, 0.32]].forEach(([f, d]) => {
+      const o = a.createOscillator(), g = a.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0 + d);
+      g.gain.exponentialRampToValueAtTime(0.22, t0 + d + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.7);
+      o.connect(g).connect(a.destination);
+      o.start(t0 + d); o.stop(t0 + d + 0.75);
+    });
+    setTimeout(() => a.close().catch(() => {}), 1600);
+  } catch { /* audio unavailable */ }
+}

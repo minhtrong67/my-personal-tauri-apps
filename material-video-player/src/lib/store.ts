@@ -127,6 +127,8 @@ export interface State {
   clearHistory: () => void;
 }
 
+/** Re-enable window-size memory shortly after leaving fullscreen / mini player (once the window has settled) */
+let retrackTimer: number | undefined;
 let saveTimer: number | undefined;
 let syncing = false;
 let thumbActive = 0;
@@ -141,6 +143,11 @@ export const useStore = create<State>((set, get) => {
   const scheduleSave = () => {
     window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => api.saveState(snapshot()).catch((e) => console.error(e)), 600);
+  };
+
+  const retrack = () => {
+    const s = get();
+    if (!s.mini && !s.fullscreen) void api.setWindowTracking(true);
   };
 
   const touchRecent = (f: VideoFile) => {
@@ -242,6 +249,8 @@ export const useStore = create<State>((set, get) => {
         console.error(e);
       }
       setActiveLang(get().settings.language);
+      void api.setStartFullscreen(get().settings.startFullscreen);
+      win().isFullscreen().then((fs) => fs && set({ fullscreen: true })).catch(() => undefined);
       // drop history entries whose file was deleted (ignored if the whole drive is offline)
       try {
         const gone = new Set((await api.findRemoved(get().recents.map((r) => r.path))).map(pathKey));
@@ -627,16 +636,23 @@ export const useStore = create<State>((set, get) => {
     toggleFullscreen: async (on) => {
       const v = on ?? !get().fullscreen;
       if (v && get().mini) await get().toggleMini();
+      window.clearTimeout(retrackTimer);
+      if (v) await api.setWindowTracking(false);
       await setFullscreen(v).catch(() => undefined);
       set({ fullscreen: v });
+      if (!v) retrackTimer = window.setTimeout(retrack, 700);
     },
     toggleMini: async () => {
       if (get().mini) {
         set({ mini: false });
         await exitMini(get().settings.alwaysOnTop).catch(() => undefined);
+        window.clearTimeout(retrackTimer);
+        retrackTimer = window.setTimeout(retrack, 700);
       } else {
         if (get().screen !== 'player') return;
         if (get().fullscreen) await get().toggleFullscreen(false);
+        window.clearTimeout(retrackTimer);
+        await api.setWindowTracking(false);
         set({ mini: true });
         await enterMini().catch(() => undefined);
       }
@@ -683,6 +699,7 @@ export const useStore = create<State>((set, get) => {
       const settings = { ...get().settings, ...p };
       set({ settings });
       if (p.language) setActiveLang(p.language);
+      if (p.startFullscreen !== undefined) void api.setStartFullscreen(p.startFullscreen);
     },
     removeRecent: (path) =>
       set((s) => {

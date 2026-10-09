@@ -272,6 +272,21 @@ export function Snackbar() {
   );
 }
 
+/** Highlighted credit: author name and the AI assistant */
+export function AuthorCredit({ center }: { center?: boolean }) {
+  const t = useT();
+  return (
+    <div className={`flex flex-wrap items-center gap-x-2 gap-y-1.5 ${center ? 'justify-center' : ''}`}>
+      <span className="text-body-md text-on-surface-variant">{t('author')}</span>
+      <span className="px-3 py-1 rounded-full bg-primary text-on-primary text-label-lg shadow-sm transition-transform duration-300 hover:scale-105">minhtrong67</span>
+      <span className="text-body-md text-on-surface-variant">{t('withAi')}</span>
+      <span className="px-3 py-1 rounded-full bg-tertiary-container text-on-tertiary-container text-label-lg inline-flex items-center gap-1 shadow-sm transition-transform duration-300 hover:scale-105">
+        <Icon name="auto_awesome" size={16} fill />Claude
+      </span>
+    </div>
+  );
+}
+
 export function Logo({ size = 28 }: { size?: number }) {
   return <img src="/icon.png" width={size} height={size} alt="" draggable={false} className="rounded-lg" />;
 }

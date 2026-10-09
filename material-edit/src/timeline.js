@@ -94,10 +94,11 @@ function clipEl(track, c) {
     el.style.backgroundRepeat = 'repeat-x';
     el.style.backgroundSize = 'auto 100%';
   } else if (m && m.wave && track === 'audio') {
-    el.style.backgroundImage = `url(${m.wave})`;
-    el.style.backgroundSize = `${(m.duration / c.speed) * pps}px 100%`;
-    el.style.backgroundPosition = `${-(c.in / c.speed) * pps}px 0`;
-    el.style.backgroundRepeat = 'no-repeat';
+    // the waveform is a mask painted in a dark tone, so it never blends with the (white) mouse pointer
+    el.classList.add('has-wave');
+    el.style.setProperty('--wave', `url(${m.wave})`);
+    el.style.setProperty('--wave-size', `${(m.duration / c.speed) * pps}px 100%`);
+    el.style.setProperty('--wave-pos', `${-(c.in / c.speed) * pps}px 0`);
   }
   const label = track === 'text' ? c.text.replace(/\s+/g, ' ') : m ? m.name : '';
   el.append(

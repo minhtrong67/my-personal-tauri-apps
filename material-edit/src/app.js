@@ -21,6 +21,7 @@ import {
   inTauri, pickDirectory, pickSavePath, pickOpenPath, pickMediaPaths, readText, writeText, currentWindow, onFileDrop,
   libRead, libWrite, setWindowFullscreen, isWindowFullscreen,
 } from './io.js';
+import { takeScreenshot } from './screenshot.js';
 import { openExport, setExportToast, warmExport } from './exporter.js';
 import { $, $$, fmtTime, baseName, stripExt, clamp, uid, h } from './util.js';
 
@@ -287,6 +288,8 @@ $('#tl-dup').addEventListener('click', duplicateSelected);
 $('#tl-del').addEventListener('click', deleteSelected);
 const toggleSnap = () => { state.snap = !state.snap; updateChrome(); };
 $('#tl-snap').addEventListener('click', toggleSnap);
+const shot = () => takeScreenshot(toast);
+$('#tl-shot').addEventListener('click', shot);
 
 /* ------------------------------------------------------------------ */
 /*  Preview stage: sizing, full screen, direct manipulation           */
@@ -625,7 +628,7 @@ const addTextAt = (time) => {
 };
 const msg = (r, key) => { if (r.ok) toast(t(key, { n: r.copies || 0 })); else toast(t('match.' + r.reason)); };
 setMenuApi({
-  toast, fullscreen: toggleFullscreen, fit: () => $('#tl-fit').click(), addText: addTextAt, snap: toggleSnap,
+  toast, fullscreen: toggleFullscreen, fit: () => $('#tl-fit').click(), addText: addTextAt, snap: toggleSnap, screenshot: shot,
 });
 
 const COMMANDS = {
@@ -678,7 +681,6 @@ async function boot() {
   const w = currentWindow();
   if (w) {
     if (settings.start === 'maximized') { try { await w.maximize(); } catch { /* ignore */ } }
-    else if (settings.start === 'fullscreen') { try { await w.setFullscreen(true); } catch { /* ignore */ } }
     w.onCloseRequested(async (ev) => {
       ev.preventDefault();
       await exitApp();

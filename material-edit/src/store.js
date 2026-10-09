@@ -22,7 +22,7 @@ export const TRANSITIONS = ['none', 'fade', 'slide', 'slideup', 'wipe', 'zoom', 
 export const defaultFilters = () => ({ brightness: 100, contrast: 100, saturate: 100, hue: 0, blur: 0, gray: 0, sepia: 0, vignette: 0, preset: 'none' });
 
 export const state = {
-  id: uid(), cover: null, name: '', aspect: '16:9', fps: 30, bg: '#000000',
+  id: uid(), cover: null, name: '', aspect: '16:9', fps: 60, bg: '#000000',
   media: [], main: [], overlay: [], text: [], audio: [],
   sel: null, multi: [], t: 0, playing: false, pps: 80, snap: true, dirty: false, projectPath: null,
 };
@@ -298,7 +298,7 @@ export function toProject(extra = {}) {
 }
 
 export function resetProject() {
-  Object.assign(state, { id: uid(), name: '', aspect: '16:9', fps: 30, bg: '#000000', media: [], main: [], overlay: [], text: [], audio: [], sel: null, multi: [], t: 0, playing: false, projectPath: null });
+  Object.assign(state, { id: uid(), name: '', aspect: '16:9', fps: 60, bg: '#000000', media: [], main: [], overlay: [], text: [], audio: [], sel: null, multi: [], t: 0, playing: false, projectPath: null });
   layout();
   resetHistory();
   markDirty(false);
@@ -313,7 +313,7 @@ export function loadProject(p) {
   if (!p || !APP_IDS.includes(p.app)) throw new Error('Not a Material Edit project');
   resetProject();
   Object.assign(state, {
-    id: p.id || state.id, name: p.name || '', aspect: ASPECTS[p.aspect] ? p.aspect : '16:9', fps: p.fps || 30, bg: p.bg || '#000000',
+    id: p.id || state.id, name: p.name || '', aspect: ASPECTS[p.aspect] ? p.aspect : '16:9', fps: p.fps || 60, bg: p.bg || '#000000',
     main: p.main || [], overlay: p.overlay || [], text: p.text || [], audio: p.audio || [],
     media: (p.media || []).map((m) => ({ ...m, url: null, el: null, file: null, offline: true, thumb: m.thumb || null, wave: m.wave || null })),
   });

@@ -7,7 +7,7 @@ import { timeAtClientX } from './timeline.js';
 import { $ } from './util.js';
 import { t } from './i18n.js';
 
-let api = { toast() {}, fullscreen() {}, fit() {}, addText() {}, snap() {} };
+let api = { screenshot() {}, toast() {}, fullscreen() {}, fit() {}, addText() {}, snap() {} };
 export const setMenuApi = (o) => Object.assign(api, o);
 
 const inside = (c) => state.t > c.start + 0.05 && state.t < c.start + c.dur - 0.05;
@@ -30,6 +30,8 @@ export function clipMenu(track, c) {
   const hasAudio = !!E.pickAudio();
   const multi = selectedItems().length > 1;
   const items = [
+    { label: t('ctx.quick1'), icon: 'bolt', run: () => report(E.quickEdit01(c, track), 'quick.done'), disabled: !hasAudio },
+    '-',
     { label: t('ctx.split'), icon: 'split', kbd: 'S', run: () => { if (!splitAt()) api.toast(t('toast.splitNone')); }, disabled: !inside(c) },
     { label: t('ctx.trimLeft'), icon: 'cut', kbd: 'Q', run: () => E.trimToPlayhead('left'), disabled: !inside(c) },
     { label: t('ctx.trimRight'), icon: 'cut', kbd: 'W', run: () => E.trimToPlayhead('right'), disabled: !inside(c) },
@@ -53,6 +55,7 @@ export function clipMenu(track, c) {
   }
   if (track !== 'audio') items.push('-', { label: t('ctx.resetTransform'), icon: 'rotate', run: E.resetTransform });
   items.push('-', { label: t('ctx.selectMenu'), icon: 'layers', sub: selectItems(track, c) });
+  items.push('-', { label: t('ctx.screenshot'), icon: 'camera', run: () => api.screenshot() });
   items.push('-', { label: t('ctx.fit'), icon: 'fit', kbd: 'Shift+Z', run: api.fit });
   items.push('-',
     { label: t('ctx.rippleDelete'), icon: 'trash', kbd: 'Shift+Del', run: E.rippleDelete, danger: true },
@@ -77,6 +80,7 @@ export function previewMenu() {
   const items = [
     { label: t(state.playing ? 'ctx.pause' : 'ctx.play'), icon: state.playing ? 'pause' : 'play', kbd: 'Space', run: toggle },
     { label: t('ctx.fullscreen'), icon: 'fullscreen', kbd: 'F', run: api.fullscreen },
+    { label: t('ctx.screenshot'), icon: 'camera', run: () => api.screenshot() },
   ];
   if (c) {
     const tr = state.sel.track;

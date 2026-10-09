@@ -3,7 +3,7 @@ const KEY = 'mve.settings.v1';
 
 export const DEFAULTS = {
   theme: 'system', seed: '#6750A4', lang: 'auto', vol: 1,
-  start: 'remember', // window on launch: remember | maximized | fullscreen
+  start: 'remember', // window on launch: remember | maximized
   layout: { left: 340, right: 320, tl: 296 },
   home: { view: 'grid', sort: 'recent' },
   proxy: true, // smooth-preview proxies for 2K/4K videos
@@ -18,5 +18,6 @@ try {
     else settings[k] = v;
   }
 } catch { /* ignore broken settings */ }
+if (settings.start === 'fullscreen') settings.start = 'maximized'; // option removed
 
 export const saveSettings = () => { try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch { /* ignore */ } };

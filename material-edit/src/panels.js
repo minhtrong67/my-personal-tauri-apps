@@ -1,5 +1,5 @@
 // Left panel: media library, text presets, filter presets and transitions.
-import { state, on, emit, selClip, commit, layout, addClip, makeText, TEXT_PRESETS, FILTER_PRESETS, TRANSITIONS, defaultFilters, getMedia } from './store.js';
+import { state, on, emit, selClip, selectedItems, commit, layout, addClip, makeText, TEXT_PRESETS, FILTER_PRESETS, TRANSITIONS, defaultFilters, getMedia } from './store.js';
 import { removeMedia, offlineMedia } from './media.js';
 import { placeMedia, timeAtClientX, resolveTrack, markDropRow } from './timeline.js';
 import { showMenu } from './contextmenu.js';
@@ -25,11 +25,20 @@ $('#rail').addEventListener('click', (e) => {
 
 
 function placeAll(list, track, at) {
-  let pos = at;
+  // videos / photos chain one after another; audio clips chain on their own row, all starting at the same point
+  let pos = at, apos = at;
   for (const m of list) {
-    const c = placeMedia(m, track, pos ?? undefined);
-    if (c && pos != null && c.dur) pos += c.dur;
+    const isAudio = m.type === 'audio';
+    const c = placeMedia(m, track, (isAudio ? apos : pos) ?? undefined);
+    if (!c || !c.dur) continue;
+    if (isAudio) { if (apos != null) apos += c.dur; else apos = c.start + c.dur; }
+    else if (pos != null) pos += c.dur;
   }
+}
+/** The + button / double-click add the whole selection when the card belongs to a multi-selection. */
+function addFromCard(m, track) {
+  const group = msel.has(m.id) && msel.size > 1 ? selectedMedia().filter((x) => !x.offline && (track === 'main' || x.type !== 'audio')) : [m];
+  if (group.length > 1) placeAll(group, track); else placeMedia(m, track);
 }
 
 export function mediaMenu(m) {
@@ -162,7 +171,7 @@ function mediaTab() {
         if (!msel.has(m.id)) { msel.clear(); msel.add(m.id); markSel(); }
         if (!m.offline) startMediaDrag(e, m, card);
       },
-      ondblclick() { if (m.offline) handlers.locate(m); else placeMedia(m, 'main'); },
+      ondblclick() { if (m.offline) handlers.locate(m); else addFromCard(m, 'main'); },
       oncontextmenu(e) { e.preventDefault(); showMenu(e.clientX, e.clientY, mediaMenu(m)); },
     });
     const thumb = h('div', { class: 'thumb' });
@@ -173,8 +182,8 @@ function mediaTab() {
     thumb.append(h('span', { class: 'kind' }, icon(m.type === 'video' ? 'video' : m.type === 'audio' ? 'music' : 'image')));
     if (m.proxyP != null) thumb.append(h('span', { class: 'proxy-chip', text: t('media.optimizing', { p: Math.round(m.proxyP * 100) }) }));
     const actions = h('div', { class: 'card-actions' },
-      m.offline ? null : h('button', { class: 'icon-btn sm', title: t('media.add'), onclick(e) { e.stopPropagation(); placeMedia(m, 'main'); } }, icon('plus')),
-      m.type !== 'audio' && !m.offline ? h('button', { class: 'icon-btn sm', title: t('media.addOverlay'), onclick(e) { e.stopPropagation(); placeMedia(m, 'overlay'); } }, icon('layers')) : null,
+      m.offline ? null : h('button', { class: 'icon-btn sm', title: t('media.add'), onclick(e) { e.stopPropagation(); addFromCard(m, 'main'); } }, icon('plus')),
+      m.type !== 'audio' && !m.offline ? h('button', { class: 'icon-btn sm', title: t('media.addOverlay'), onclick(e) { e.stopPropagation(); addFromCard(m, 'overlay'); } }, icon('layers')) : null,
       h('button', { class: 'icon-btn sm', title: t('btn.remove'), onclick(e) { e.stopPropagation(); removeMediaAndClips(m.id); } }, icon('trash')),
     );
     card.append(thumb, h('div', { class: 'name', text: m.name }), actions);
@@ -220,10 +229,11 @@ function addText(kind) {
   addClip('text', c);
 }
 
-function targetMedia() {
-  const c = selClip();
-  return c && c.filters ? c : null;
+/** Every selected clip that can take a filter (a marquee/multi selection applies to all of them). */
+function targetClips() {
+  return selectedItems().map((s) => s.clip).filter((c) => c && c.filters);
 }
+function targetMedia() { return targetClips()[0] || null; }
 
 function effectsTab() {
   const wrap = h('div', { class: 'panel' });
@@ -236,13 +246,13 @@ function effectsTab() {
     const sw = h('div', { class: 'fx-thumb' });
     sw.style.backgroundImage = first ? `url(${first.thumb})` : 'linear-gradient(135deg,#f59e0b,#ec4899 50%,#3b82f6)';
     sw.style.filter = css;
-    const cur = targetMedia();
+    const tgt = targetClips();
     grid.append(h('button', {
-      class: 'preset' + (cur && cur.filters.preset === k ? ' on' : ''),
+      class: 'preset' + (tgt.length && tgt.every((c) => c.filters.preset === k) ? ' on' : ''),
       onclick() {
-        const c = targetMedia();
-        if (!c) { handlers.toast(t('effects.select')); return; }
-        c.filters = { ...defaultFilters(), ...FILTER_PRESETS[k], preset: k };
+        const list = targetClips();
+        if (!list.length) { handlers.toast(t('effects.select')); return; }
+        for (const c of list) c.filters = { ...defaultFilters(), ...FILTER_PRESETS[k], preset: k };
         commit(); emit('change'); emit('inspect'); render();
       },
     }, sw, h('small', { text: t('filter.' + k) })));
@@ -254,16 +264,18 @@ function effectsTab() {
 function transitionsTab() {
   const wrap = h('div', { class: 'panel' });
   const c = selClip();
-  const ok = state.sel && state.sel.track === 'main' && state.main.indexOf(c) > 0;
+  const picks = () => selectedItems().filter((s) => s.track === 'main' && state.main.indexOf(s.clip) > 0).map((s) => s.clip);
+  const ok = picks().length > 0;
+  const first = picks()[0];
   wrap.append(h('p', { class: 'hint', text: ok ? t('trans.apply') : t('trans.select') }));
   const grid = h('div', { class: 'preset-grid' });
   for (const k of TRANSITIONS) {
     grid.append(h('button', {
-      class: 'preset' + (ok && c.trans.type === k ? ' on' : ''),
+      class: 'preset' + (ok && first.trans.type === k ? ' on' : ''),
       onclick() {
-        const cur = selClip();
-        if (!(state.sel && state.sel.track === 'main' && state.main.indexOf(cur) > 0)) { handlers.toast(t('trans.select')); return; }
-        cur.trans.type = k;
+        const list = picks();
+        if (!list.length) { handlers.toast(t('trans.select')); return; }
+        for (const cur of list) cur.trans.type = k;
         layout(); commit(); emit('change'); emit('inspect'); render();
       },
     }, h('div', { class: 'tr-thumb ' + k }, h('i'), h('i')), h('small', { text: t('trans.' + k) })));
@@ -272,7 +284,7 @@ function transitionsTab() {
   wrap.append(h('button', {
     class: 'btn tonal wide', text: t('trans.applyAll'),
     onclick() {
-      const type = ok ? c.trans.type : 'fade';
+      const type = ok ? first.trans.type : 'fade';
       state.main.forEach((x, i) => { if (i > 0) x.trans.type = type === 'none' ? 'fade' : type; });
       layout(); commit(); emit('change'); emit('inspect');
     },

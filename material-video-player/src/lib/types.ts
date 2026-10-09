@@ -68,6 +68,7 @@ export interface Settings {
   volume: number;
   muted: boolean;
   alwaysOnTop: boolean;
+  startFullscreen: boolean;
   hideDelay: number; // ms
   seekStep: number; // seconds
   sub: SubStyle;
@@ -88,6 +89,7 @@ export const defaultSettings: Settings = {
   volume: 0.8,
   muted: false,
   alwaysOnTop: false,
+  startFullscreen: false,
   hideDelay: 2500,
   seekStep: 5,
   sub: { size: 100, color: '#FFFFFF', bg: 'shadow', opacity: 0.6, bottom: 8 },

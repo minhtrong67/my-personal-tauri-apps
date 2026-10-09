@@ -2292,6 +2292,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "material-music-player"
+version = "1.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "lofty",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-single-instance",
+ "walkdir",
+]
+
+[[package]]
 name = "material-note"
 version = "1.0.0"
 dependencies = [
@@ -2438,21 +2453,6 @@ name = "multiversion_no_op"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "743fb55ba31b18fb1ecef6bdc9aa2743314978ac084044301a7eee33fb99a20d"
-
-[[package]]
-name = "music-player"
-version = "1.0.0"
-dependencies = [
- "base64 0.22.1",
- "lofty",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-single-instance",
- "walkdir",
-]
 
 [[package]]
 name = "ndk"

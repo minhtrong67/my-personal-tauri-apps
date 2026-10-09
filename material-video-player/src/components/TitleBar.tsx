@@ -34,6 +34,7 @@ export function TitleBar() {
   const go = useStore((s) => s.go);
   const hasVideo = useStore((s) => s.index >= 0);
   const syncing = useStore((s) => s.syncing);
+  const fullscreen = useStore((s) => s.fullscreen);
   return (
     <div data-tauri-drag-region className="h-14 shrink-0 flex items-center gap-2 pl-4 pr-1 select-none">
       {screen === 'settings' && <IconButton icon="arrow_back" title={t('back')} onClick={() => go(prev === 'player' && !hasVideo ? 'home' : prev)} />}
@@ -54,6 +55,7 @@ export function TitleBar() {
           <Icon name="settings" className="transition-transform duration-500 ease-emphasized group-hover:rotate-90" />
         </button>
       )}
+      <IconButton icon={fullscreen ? 'fullscreen_exit' : 'fullscreen'} title={`${fullscreen ? t('exitFullscreen') : t('fullscreen')} (F11)`} onClick={() => void useStore.getState().toggleFullscreen()} />
       <WindowControls />
     </div>
   );

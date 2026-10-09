@@ -1,5 +1,6 @@
 // Higher-level editing operations: clipboard, trim to playhead, mute, edit-point jumps and
 // "match video length to audio" (loops short videos, stretches images, trims long ones).
+import { FILTER_PRESETS, defaultFilters } from './store.js';
 import { state, emit, layout, commit, select, selectMany, selClip, selectedItems, totalDuration, deleteSelected, makeClip, getMedia } from './store.js';
 import { uid } from './util.js';
 
@@ -252,3 +253,17 @@ export function invertTrackSelection(track) {
   selectMany(state[track].filter((c) => !on.has(c.id)).map((c) => ref(track, c)));
 }
 export const clearSelection = () => select(null, null);
+
+/**
+ * "quick edit #01": makes the clip (or the whole video track when called from another row) as long as the audio,
+ * then gives every video / photo in the timeline the Vivid look.
+ */
+export function quickEdit01(clip, track) {
+  const r = track === 'main' && clip && state.main.includes(clip) ? fitClipToAudio(clip) : matchMainToAudio();
+  if (!r.ok) return r;
+  for (const c of [...state.main, ...state.overlay]) c.filters = { ...defaultFilters(), ...FILTER_PRESETS.vivid, preset: 'vivid' };
+  commit();
+  emit('change');
+  emit('inspect');
+  return r;
+}

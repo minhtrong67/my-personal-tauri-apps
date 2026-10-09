@@ -4,7 +4,7 @@ import { tr as tr_ } from '../lib/i18n';
 import { openWithDefault, reveal } from '../lib/tauri';
 import { useLang, useT } from '../lib/useT';
 import { basename, fmtSize, fmtTime, natural, norm, pathKey } from '../lib/utils';
-import { Button, Icon, IconButton, Logo, Segmented, openMenuAt, openMenuBelow } from '../components/ui';
+import { AuthorCredit, Button, Icon, IconButton, Logo, Segmented, openMenuAt, openMenuBelow } from '../components/ui';
 import { Poster } from '../components/Poster';
 import { ViewToggle } from '../components/ViewToggle';
 import type { LibrarySort, MenuItem, Recent, VideoFile } from '../lib/types';
@@ -183,6 +183,7 @@ function RecentTab() {
         <h1 className="text-headline-lg mt-6 animate-rise" style={{ animationDelay: '80ms' }}>Material Video Player</h1>
         <p className="text-body-lg text-on-surface-variant max-w-md mt-1 mb-8 animate-rise" style={{ animationDelay: '140ms' }}>{t('homeTagline')}</p>
         <div className="flex items-center gap-2 text-body-md text-on-surface-variant border border-dashed border-outline-variant rounded-2xl px-6 py-4 animate-rise" style={{ animationDelay: '200ms' }}><Icon name="drag_pan" />{t('dropHint')}</div>
+        <div className="mt-8 animate-rise" style={{ animationDelay: '280ms' }}><AuthorCredit center /></div>
       </div>
     );
   }

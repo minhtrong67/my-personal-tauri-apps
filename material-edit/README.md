@@ -35,7 +35,9 @@ Created by **minhtrong67** · with AI assistance from **Claude** (Anthropic)
 - **Context menus & shortcuts** – everywhere, with the familiar editor keys (see below).
 - **Transitions, filters, text, speed, volume, fades, aspect ratios** (16:9, 9:16, 1:1, 4:3, 21:9).
 - **Smooth preview for 2K/4K** – large MP4 videos get a small preview copy once (cached in the temp folder, toggle in Settings); scrubbing and playback stay fluid while export still uses the original. The preview is rendered crisp (≥1.5× supersampling, high-quality scaling) and only repaints when something changes.
-- **Fast, RAM-safe export** – always starts at MP4 · 1080p · 60 fps; faster than real time, written straight to disk (see *Export*). Choose the file name and folder in the export window (or set a default export folder in Settings); your last export options are remembered.
+- **Fast, RAM-safe export** – preset to MP4 · 1080p · 60 fps; faster than real time, written straight to disk (see *Export*). Choose the file name and folder in the export window (or set a default export folder in Settings).
+- **Screenshot** – save the frame under the playhead as a PNG (camera button next to Snapping, or right-click menu).
+- **Multi-select editing** – marquee-select several clips and edit transform, fades, volume and filters for all of them at once.
 - **Window memory** – size, position and maximised state are restored; optional "always start full screen".
 - **Material Design 3** – dynamic colour from any seed, light / dark / system, smooth motion (respects *reduced motion*).
 - **English & Tiếng Việt** UI.
@@ -63,16 +65,16 @@ Installers are produced by `npm run build` (see below) and appear in `target/rel
 
 ## Install
 
-Run the installer. The app, installer and uninstaller carry the Material Edit icon set (16–512 px PNG, multi-size `.ico`, `.icns`, Windows Store logos).
+Run the installer. The app, installer and uninstaller carry the Material Edit icon set (16–512 px PNG, multi-size `.ico`, `.icns`, Windows Store logos). The uninstaller icon is applied through `src-tauri/installer-hooks.nsh` (sets `MUI_UNICON` to `icons/uninstaller.ico`).
 
 ## Export
 
-| Mode | How it works | Notes |
-|---|---|---|
-| **Fast** (default) | Frame-exact decode (WebCodecs) → canvas composition → encode (WebCodecs) → streaming muxer → file | Faster than real time; RAM stays flat because data is written to disk as it is produced. |
-| **Real-time** | Records the canvas + audio mix with `MediaRecorder` | Most compatible; takes as long as the video. Chunks are streamed to disk. |
+The export window always opens preset to **MP4 · 1080p · 60 fps** (format, resolution, frame rate and quality can still be changed; Quality = 17 / 25 / 37 Mbps at 1080p60) (H.264 + AAC; a VP9 MP4 is used only if the machine has no H.264 encoder). Pipeline: frame-exact decode (WebCodecs, MP4/MOV incl. fragmented MP4; sequential `<video>` playback as a fallback) → canvas composition → hardware encode (WebCodecs) → streaming muxer → file on disk.
 
-Safety measures: bounded decoder/encoder queues, capped pending disk writes, a memory budget for decoded audio, and an automatic switch to real-time mode if the fast path is unavailable or fails. Cancel any time.
+- **Fast:** the decoder runs ahead while the previous frame is drawn/encoded, and unchanged frames (e.g. 30 fps footage at 60 fps) are not redrawn.
+- **Light:** AAC/Opus/MP3 audio is decoded one second at a time; RAM stays flat for any length.
+- **Safe:** bounded queues, Cancel closes the window instantly and removes the unfinished file, a one-line diagnostic shows where the time goes.
+- No FFmpeg is bundled, so the installer stays small.
 
 ## Tech stack
 

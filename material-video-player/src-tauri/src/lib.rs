@@ -1,10 +1,12 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
-use std::time::UNIX_EPOCH;
-use tauri::{AppHandle, Emitter, Manager};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
+use std::time::{Duration, UNIX_EPOCH};
+use tauri::{AppHandle, Emitter, Manager, State, Window};
 use walkdir::WalkDir;
 
 const VIDEO_EXTS: [&str; 14] = [
@@ -26,6 +28,164 @@ struct VideoFile {
 struct SubFile {
     path: String,
     name: String,
+}
+
+// ---------- remember window size / position ----------
+
+/// Last "normal" (not maximized, not fullscreen, not mini) window geometry, in physical pixels.
+#[derive(Serialize, Deserialize, Clone)]
+struct WinState {
+    width: u32,
+    height: u32,
+    x: i32,
+    y: i32,
+    maximized: bool,
+}
+
+struct WinTracker {
+    /// Disabled while the app is in fullscreen / mini-player mode so those sizes are never saved
+    track: AtomicBool,
+    dirty: AtomicBool,
+    state: Mutex<Option<WinState>>,
+}
+
+fn window_state_path(app: &AppHandle) -> Option<PathBuf> {
+    let dir = app.path().app_data_dir().ok()?;
+    fs::create_dir_all(&dir).ok()?;
+    Some(dir.join("window.json"))
+}
+
+fn write_window_state(app: &AppHandle) {
+    let tracker = app.state::<WinTracker>();
+    let st = tracker.state.lock().ok().and_then(|g| g.clone());
+    if let (Some(st), Some(path)) = (st, window_state_path(app)) {
+        if let Ok(json) = serde_json::to_string(&st) {
+            let _ = fs::write(path, json);
+        }
+    }
+}
+
+fn capture_window_state(window: &Window) -> Option<WinState> {
+    let tracker = window.state::<WinTracker>();
+    if !tracker.track.load(Ordering::Relaxed) {
+        return None;
+    }
+    if window.is_fullscreen().unwrap_or(false) || window.is_minimized().unwrap_or(false) {
+        return None;
+    }
+    let mut cur = tracker.state.lock().ok().and_then(|g| g.clone()).unwrap_or(WinState {
+        width: 0,
+        height: 0,
+        x: 0,
+        y: 0,
+        maximized: false,
+    });
+    if window.is_maximized().unwrap_or(false) {
+        cur.maximized = true; // keep the previous normal size so "restore down" returns to it
+        if cur.width == 0 {
+            return None;
+        }
+    } else {
+        let size = window.inner_size().ok()?;
+        let pos = window.outer_position().ok()?;
+        if pos.x <= -30000 || pos.y <= -30000 {
+            return None; // Windows reports huge negative coordinates for minimized windows
+        }
+        cur = WinState { width: size.width, height: size.height, x: pos.x, y: pos.y, maximized: false };
+    }
+    Some(cur)
+}
+
+fn remember_window(window: &Window, flush: bool) {
+    if let Some(st) = capture_window_state(window) {
+        let tracker = window.state::<WinTracker>();
+        if let Ok(mut g) = tracker.state.lock() {
+            *g = Some(st);
+        }
+        if flush {
+            write_window_state(window.app_handle());
+            tracker.dirty.store(false, Ordering::Relaxed);
+        } else {
+            tracker.dirty.store(true, Ordering::Relaxed);
+        }
+    }
+}
+
+/// Is enough of the saved window visible on a connected monitor? (monitors may have been unplugged)
+fn on_screen(w: &tauri::WebviewWindow, st: &WinState) -> bool {
+    let Ok(monitors) = w.available_monitors() else { return true };
+    if monitors.is_empty() {
+        return true;
+    }
+    monitors.iter().any(|m| {
+        let p = m.position();
+        let s = m.size();
+        let overlap_x = (st.x + st.width as i32).min(p.x + s.width as i32) - st.x.max(p.x);
+        overlap_x >= 120 && st.y >= p.y - 20 && st.y <= p.y + s.height as i32 - 80
+    })
+}
+
+fn restore_window_state(app: &AppHandle) {
+    let Some(w) = app.get_webview_window("main") else { return };
+    if let Some(path) = window_state_path(app) {
+        if let Ok(txt) = fs::read_to_string(path) {
+            if let Ok(st) = serde_json::from_str::<WinState>(&txt) {
+                if st.width >= 300 && st.height >= 200 {
+                    let _ = w.set_size(tauri::PhysicalSize::new(st.width, st.height));
+                    if on_screen(&w, &st) {
+                        let _ = w.set_position(tauri::PhysicalPosition::new(st.x, st.y));
+                    } else {
+                        let _ = w.center();
+                    }
+                    if st.maximized {
+                        let _ = w.maximize();
+                    }
+                    if let Ok(mut g) = app.state::<WinTracker>().state.lock() {
+                        *g = Some(st);
+                    }
+                }
+            }
+        }
+    }
+    if read_prefs(app).start_fullscreen {
+        app.state::<WinTracker>().track.store(false, Ordering::Relaxed); // never save the fullscreen size
+        let _ = w.set_fullscreen(true);
+    }
+    // the window is created hidden (see tauri.conf.json) so there is no visible jump
+    let _ = w.show();
+    let _ = w.set_focus();
+}
+
+#[derive(Serialize, Deserialize, Default)]
+struct Prefs {
+    #[serde(default)]
+    start_fullscreen: bool,
+}
+
+fn prefs_path(app: &AppHandle) -> Option<PathBuf> {
+    let dir = app.path().app_data_dir().ok()?;
+    fs::create_dir_all(&dir).ok()?;
+    Some(dir.join("prefs.json"))
+}
+
+fn read_prefs(app: &AppHandle) -> Prefs {
+    prefs_path(app)
+        .and_then(|p| fs::read_to_string(p).ok())
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+/// "Always start in fullscreen" option (read at startup, before the window is shown)
+#[tauri::command]
+fn set_start_fullscreen(app: AppHandle, enabled: bool) {
+    if let (Some(p), Ok(json)) = (prefs_path(&app), serde_json::to_string(&Prefs { start_fullscreen: enabled })) {
+        let _ = fs::write(p, json);
+    }
+}
+
+#[tauri::command]
+fn set_window_tracking(tracker: State<WinTracker>, enabled: bool) {
+    tracker.track.store(enabled, Ordering::Relaxed);
 }
 
 // ---------- helpers ----------
@@ -357,6 +517,34 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_dialog::init())
+        .manage(WinTracker {
+            track: AtomicBool::new(true),
+            dirty: AtomicBool::new(false),
+            state: Mutex::new(None),
+        })
+        .setup(|app| {
+            restore_window_state(app.handle());
+            // background saver: writes the window geometry at most twice a second while it changes
+            let handle = app.handle().clone();
+            std::thread::spawn(move || loop {
+                std::thread::sleep(Duration::from_millis(500));
+                let tracker = handle.state::<WinTracker>();
+                if tracker.dirty.swap(false, Ordering::Relaxed) {
+                    write_window_state(&handle);
+                }
+            });
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            if window.label() != "main" {
+                return;
+            }
+            match event {
+                tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => remember_window(window, false),
+                tauri::WindowEvent::CloseRequested { .. } => remember_window(window, true),
+                _ => {}
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             scan_videos,
             list_siblings,
@@ -371,6 +559,8 @@ pub fn run() {
             reveal_in_explorer,
             open_with_default,
             is_dir,
+            set_window_tracking,
+            set_start_fullscreen,
             get_launch_args
         ])
         .run(tauri::generate_context!())
