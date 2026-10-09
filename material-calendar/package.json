@@ -1,0 +1,24 @@
+{
+  "name": "calendar-app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A Material Design 3 desktop calendar built with Tauri 2",
+  "author": "minhtrong67",
+  "license": "MIT",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "icons": "tauri icon app-icon.png",
+    "vite:dev": "vite",
+    "vite:build": "vite build",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "vite": "^5.4.0"
+  }
+}
