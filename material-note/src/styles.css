@@ -384,3 +384,23 @@ body, .appbar, .tabstrip, .statusbar, .editors, .findbar, .menu-pop, dialog.dlg,
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+
+/* highlighted credits */
+.credit-chip { display: inline-block; padding: 2px 12px; border-radius: var(--r-full); font-weight: 500; background: var(--primary-container); color: var(--on-primary-container); }
+.credit-chip.ai { background: var(--secondary-container); color: var(--on-secondary-container); }
+.about-credit { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+
+/* window-on-start choice cards */
+.choice { display: grid; gap: 8px; }
+.choice-item { position: relative; display: block; }
+.choice-item input { position: absolute; opacity: 0; pointer-events: none; }
+.ci { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border: 1px solid var(--outline-variant); border-radius: var(--r-md); cursor: pointer; transition: background-color .15s, border-color .15s; }
+.ci:hover { background: var(--hover); }
+.ci .ct { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ci .ct b { font-weight: 500; }
+.ci .ct small { font-size: 12.5px; color: var(--on-surface-variant); }
+.ci > svg.icon { color: var(--on-surface-variant); }
+.ci .tick { opacity: 0; transform: scale(.6); color: var(--primary); transition: opacity .18s var(--ease), transform .18s var(--ease); }
+.choice-item input:checked + .ci { border-color: var(--primary); background: var(--secondary-container); }
+.choice-item input:checked + .ci .tick { opacity: 1; transform: none; }
+.choice-item input:focus-visible + .ci { outline: 2px solid var(--primary); outline-offset: 2px; }

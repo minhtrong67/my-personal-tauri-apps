@@ -20,7 +20,7 @@
   const DEFAULTS = {
     theme: 'system', seed: '#6750A4', lang: null, view: 'details', sortKey: 'name', sortDir: 'asc',
     showHidden: false, showExt: true, confirmDelete: true, showNav: true, showDetails: false,
-    startFullscreen: false, pinned: [], groupBy: 'none', showChecks: false,
+    windowMode: 'remember', winState: null, autoExpandTree: false, pinned: [], groupBy: 'none', showChecks: false,
     cols: ['modified', 'type', 'size'], colW: { modified: 170, created: 170, type: 160, size: 100 },
     recent: [], frequent: {}
   };
@@ -53,6 +53,10 @@
     renaming: false,
     undo: [],
     kind: 'all',          // type filter
+    pos: new Map(),       // path -> index in view
+    els: [],              // index -> DOM element
+    rendered: 0,          // how many view items are in the DOM
+    sig: '',              // listing signature (skip no-op refreshes)
     groupAt: new Map(),   // view index -> group header info
     tools: { winrar: false, sevenzip: false, code: false, terminal: false }
   };
@@ -109,7 +113,14 @@
     return (v >= 100 ? v.toFixed(0) : v.toFixed(1)) + ' ' + units[i];
   }
   const locale = () => (I18n.getLang() === 'vi' ? 'vi-VN' : 'en-US');
-  const fmtDate = (ms) => (ms ? new Date(ms).toLocaleString(locale(), { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
+  let dtfLang = '';
+  let dtf = null;
+  const fmtDate = (ms) => {
+    if (!ms) return '';
+    const l = locale();
+    if (l !== dtfLang) { dtfLang = l; dtf = new Intl.DateTimeFormat(l, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+    return dtf.format(ms);
+  };
 
   const CATS = {
     image: 'png jpg jpeg gif webp bmp svg ico avif tif tiff heic',
@@ -143,11 +154,18 @@
   }
 
   function typeLabel(e) {
-    if (e.isDir) return t('type.folder');
-    const ext = extOf(e.name);
-    if (!ext) return t('type.plain');
-    const cat = EXT2CAT[ext];
-    return cat ? t('type.cat', { ext: ext.toUpperCase(), cat: t('cat.' + cat) }) : t('type.file', { ext: ext.toUpperCase() });
+    const lang = I18n.getLang();
+    if (e._tl !== undefined && e._tg === lang) return e._tl; // memoised: sorting calls this a lot
+    let r;
+    if (e.isDir) r = t('type.folder');
+    else {
+      const ext = extOf(e.name);
+      const cat = EXT2CAT[ext];
+      r = !ext ? t('type.plain') : cat ? t('type.cat', { ext: ext.toUpperCase(), cat: t('cat.' + cat) }) : t('type.file', { ext: ext.toUpperCase() });
+    }
+    e._tl = r;
+    e._tg = lang;
+    return r;
   }
 
   function errText(err) {
@@ -155,6 +173,8 @@
     if (s.includes('exists')) return t('err.exists');
     if (s.includes('invalid-name')) return t('err.invalidName');
     if (s.includes('into-itself')) return t('err.intoItself');
+    if (s.includes('cancelled')) return t('op.cancelled');
+    if (s.includes('wallpaper-failed')) return t('err.wallpaper');
     if (s.includes('no-extractor')) return t('err.noExtractor');
     if (s.includes('no-winrar')) return t('err.noWinrar');
     if (s.includes('not-found')) return t('err.notFound');
@@ -372,6 +392,9 @@
       else entries = await invoke('list_dir', { path });
       if (token !== state.token) return false;
       const changed = state.path !== path;
+      const sig = entries.length + ':' + entries.reduce((h, e) => (h * 31 + e.size + (e.modified || 0) + e.name.length) % 2147483647, 7);
+      if (silent && !changed && !select && !isVirtual(path) && sig === state.sig) return true; // nothing changed on disk
+      state.sig = sig;
       // mutate in place: the arrays are shared with the active tab
       if (push && state.path !== null && changed) { state.back.push(state.path); state.fwd.length = 0; }
       state.path = path;
@@ -407,14 +430,41 @@
     renderSidebar();
     if (!tree.cache.has(k)) { await loadTreeChildren(path); renderSidebar(); }
   }
-  async function revealInTree(path) {
+  function scrollActiveIntoView() {
+    const side = $('#sidebar');
+    const el = side.querySelector('.side-item.active');
+    if (!el || side.hidden) return;
+    const r = el.getBoundingClientRect();
+    const s = side.getBoundingClientRect();
+    if (r.top < s.top + 8 || r.bottom > s.bottom - 8) side.scrollTop += r.top - s.top - s.height / 3;
+  }
+
+  // Opens a tree node right away (before its children have loaded) and fills it in as soon as they arrive.
+  function expandNode(path) {
+    const k = pk(path);
     let changed = false;
-    for (const a of crumbsOf(path).slice(0, -1)) {
+    if (!tree.open.has(k)) { tree.open.add(k); changed = true; }
+    if (changed) renderSidebar();
+    if (!tree.cache.has(k)) return loadTreeChildren(path).then(renderSidebar);
+    return Promise.resolve();
+  }
+
+  async function revealInTree(path) {
+    const parts = crumbsOf(path); // every ancestor AND the folder itself
+    let changed = false;
+    const need = [];
+    for (const a of parts) {
       const k = pk(a.path);
       if (!tree.open.has(k)) { tree.open.add(k); changed = true; }
-      if (!tree.cache.has(k)) { await loadTreeChildren(a.path); changed = true; }
+      if (!tree.cache.has(k)) need.push(a.path);
     }
-    if (changed && state.path === path) renderSidebar();
+    if (changed) renderSidebar(); // show the opened nodes immediately
+    scrollActiveIntoView();
+    await Promise.all(need.map((p) => loadTreeChildren(p).then(() => {
+      if (state.path !== path) return; // user already moved on
+      renderSidebar();
+      scrollActiveIntoView();
+    })));
   }
 
   function afterLoad(select) {
@@ -426,7 +476,7 @@
     renderSidebar();
     renderTabs();
     updateChrome();
-    if (!isVirtual()) revealInTree(state.path);
+    if (settings.autoExpandTree) { if (!isVirtual()) revealInTree(state.path); else scrollActiveIntoView(); }
   }
 
   const refresh = (select) => navigate(state.path, { push: false, silent: true, select });
@@ -440,12 +490,22 @@
 
   /* ---------------------------------------------------------------------- tabs */
   const tabTitle = (p) => (p === HOME ? t('place.home') : p === null || p === '' ? t('place.thispc') : baseName(p));
+  function tabIconHtml(p) {
+    const use = (id) => `<svg class="icon"><use href="#${id}"/></svg>`;
+    if (p === HOME) return use('i-home');
+    if (p === null || p === '') return use('i-pc');
+    if (parentOf(p) === '') return use('i-drive');
+    const place = state.places.find((x) => samePath(x.path, p));
+    if (place) return use(PLACE_ICON[place.id] || 'i-folder');
+    return '<svg class="fi c-folder"><use href="#f-folder"/></svg>';
+  }
+
   function renderTabs() {
     const box = $('#ftabs');
     box.classList.toggle('single', tabs.length === 1);
     box.innerHTML = tabs.map((tb, i) =>
       `<div class="ftab${i === activeTab ? ' active' : ''}${tb.isNew ? ' enter' : ''}" data-i="${i}" role="tab" title="${esc(tb.path || t('place.thispc'))}">` +
-      `<svg class="fi c-folder"><use href="#f-folder"/></svg><span class="tt">${esc(tabTitle(tb.path))}</span>` +
+      `${tabIconHtml(tb.path)}<span class="tt">${esc(tabTitle(tb.path))}</span>` +
       `<button class="ftab-x" data-close="${i}" tabindex="-1" title="${esc(t('tab.close'))}"><svg class="icon"><use href="#i-close"/></svg></button></div>`).join('');
     tabs.forEach((tb) => { tb.isNew = false; });
     const act = box.querySelector('.ftab.active');
@@ -559,6 +619,7 @@
       });
     }
     state.view = list;
+    state.pos = new Map(list.map((e, i) => [e.path, i]));
   }
 
   const tipOf = (e) => [e.name, typeLabel(e), e.isDir ? '' : fmtSize(e.size, true), fmtDate(e.modified)].filter(Boolean).join('\n');
@@ -572,13 +633,13 @@
   }
 
   function rowHtml(e, i, cutSet) {
-    const cls = (cutSet.has(e.path) ? ' cut' : '') + (e.hidden ? ' hidden-item' : '');
+    const cls = (cutSet.has(e.path) ? ' cut' : '') + (e.hidden ? ' hidden-item' : '') + (state.selected.has(e.path) ? ' sel' : '') + (i === state.focus ? ' focus' : '');
     return `<div class="row${cls}" role="option" data-i="${i}" draggable="true" title="${esc(tipOf(e))}"><div class="c-name">${checkHtml()}${iconSvg(e)}<span class="nm">${esc(shownName(e))}</span></div>` +
       visibleCols().map((c) => cellHtml(e, c)).join('') + '</div>';
   }
 
   function tileHtml(e, i, cutSet) {
-    const cls = (cutSet.has(e.path) ? ' cut' : '') + (e.hidden ? ' hidden-item' : '');
+    const cls = (cutSet.has(e.path) ? ' cut' : '') + (e.hidden ? ' hidden-item' : '') + (state.selected.has(e.path) ? ' sel' : '') + (i === state.focus ? ' focus' : '');
     const thumb = !e.isDir && convertFileSrc && THUMB_EXT.has(extOf(e.name)) && e.size < 8 * 1024 * 1024
       ? `<img loading="lazy" decoding="async" alt="" src="${esc(convertFileSrc(e.path))}">`
       : iconSvg(e);
@@ -594,18 +655,22 @@
     return '<div class="list-head" id="list-head">' + h('name') + visibleCols().map(h).join('') + '</div>';
   }
 
+  const applyWidths = (root) => root.querySelectorAll('[data-w]').forEach((el) => { el.style.width = el.dataset.w + '%'; });
+  const pageMode = () => (isGridView() ? 'hg-' + (settings.view === 'small' ? 'sm' : settings.view === 'large' ? 'lg' : 'md') : 'home-rows');
+
   function renderThisPc(list) {
-    list.className = 'list';
+    list.className = 'list ' + pageMode();
     list.innerHTML = `<div class="drives-title">${esc(t('sidebar.drives'))}</div><div class="drives">` + state.drives.map((d) => {
       const used = d.total ? Math.round(((d.total - d.free) / d.total) * 100) : 0;
       return `<button class="drive" data-path="${esc(d.path)}" title="${esc(d.path)}"><svg class="icon"><use href="#i-drive"/></svg><div class="meta">` +
-        `<div class="dn">${esc(driveLabel(d))}</div><div class="bar"><i class="${used >= 90 ? 'full' : ''}" style="width:${used}%"></i></div>` +
+        `<div class="dn">${esc(driveLabel(d))}</div><div class="bar"><i class="${used >= 90 ? 'full' : ''}" data-w="${used}"></i></div>` +
         `<div class="ds">${esc(t('drive.free', { free: fmtSize(d.free, true), total: fmtSize(d.total, true) }))}</div></div></button>`;
     }).join('') + '</div>';
+    applyWidths(list);
   }
 
   function renderHome(list) {
-    list.className = 'list home';
+    list.className = 'list home ' + pageMode();
     const card = (path, icon, label, sub, isFolder) =>
       `<button class="home-card" data-path="${esc(path)}" title="${esc(path)}">` +
       (isFolder ? '<svg class="fi c-folder"><use href="#f-folder"/></svg>' : `<svg class="icon"><use href="#${icon}"/></svg>`) +
@@ -637,10 +702,52 @@
     html += `<h3>${esc(t('sidebar.drives'))}</h3><div class="drives">` + state.drives.map((d) => {
       const used = d.total ? Math.round(((d.total - d.free) / d.total) * 100) : 0;
       return `<button class="drive" data-path="${esc(d.path)}" title="${esc(d.path)}"><svg class="icon"><use href="#i-drive"/></svg><div class="meta">` +
-        `<div class="dn">${esc(driveLabel(d))}</div><div class="bar"><i class="${used >= 90 ? 'full' : ''}" style="width:${used}%"></i></div>` +
+        `<div class="dn">${esc(driveLabel(d))}</div><div class="bar"><i class="${used >= 90 ? 'full' : ''}" data-w="${used}"></i></div>` +
         `<div class="ds">${esc(t('drive.free', { free: fmtSize(d.free, true), total: fmtSize(d.total, true) }))}</div></div></button>`;
     }).join('') + '</div>';
     list.innerHTML = html;
+    applyWidths(list);
+  }
+
+  /* Large folders are painted in chunks so the window never freezes. */
+  const FIRST_CHUNK = 300;
+  const NEXT_CHUNK = 500;
+  let renderGen = 0;
+  const ui = { sel: new Set(), focus: -1, cut: new Set() };
+  const cutSetNow = () => new Set(state.clip && state.clip.cut ? state.clip.paths : []);
+
+  function itemsHtml(from, to, grid) {
+    const cutSet = cutSetNow();
+    let html = '';
+    for (let i = from; i < to; i++) {
+      const e = state.view[i];
+      const g = state.groupAt.get(i);
+      if (g) html += `<div class="grp" data-g="${g.start}" data-n="${g.count}"><span>${esc(g.label)}</span><span class="n">${g.count}</span></div>`;
+      html += grid ? tileHtml(e, i, cutSet) : rowHtml(e, i, cutSet);
+    }
+    return html;
+  }
+  function indexEls() {
+    state.els = [];
+    for (const el of $('#list').children) if (el.dataset.i !== undefined) state.els[+el.dataset.i] = el;
+  }
+  function appendItems(from, to, grid) {
+    $('#list').insertAdjacentHTML('beforeend', itemsHtml(from, to, grid));
+    state.rendered = to;
+    indexEls();
+  }
+  function scheduleRest(gen, grid) {
+    requestAnimationFrame(() => {
+      if (gen !== renderGen) return;
+      appendItems(state.rendered, Math.min(state.view.length, state.rendered + NEXT_CHUNK), grid);
+      if (state.rendered < state.view.length) scheduleRest(gen, grid);
+    });
+  }
+  function ensureRendered(i) {
+    const grid = $('#list').classList.contains('grid');
+    while (state.rendered <= i && state.rendered < state.view.length) {
+      appendItems(state.rendered, Math.min(state.view.length, state.rendered + NEXT_CHUNK), grid);
+    }
   }
 
   function render() {
@@ -654,6 +761,9 @@
 
     if (virt) {
       state.view = [];
+      state.pos = new Map();
+      state.els = [];
+      state.rendered = 0;
       state.groupAt = new Map();
       if (state.path === HOME) renderHome(list); else renderThisPc(list);
       updateStatus();
@@ -664,13 +774,15 @@
     computeView();
     list.className = 'list' + (grid ? ' grid' + (settings.view === 'small' ? ' size-sm' : settings.view === 'large' ? ' size-lg' : '') : '');
     const cutSet = new Set(state.clip && state.clip.cut ? state.clip.paths : []);
-    let html = grid ? '' : headerHtml();
-    state.view.forEach((e, i) => {
-      const g = state.groupAt.get(i);
-      if (g) html += `<div class="grp" data-g="${g.start}" data-n="${g.count}"><span>${esc(g.label)}</span><span class="n">${g.count}</span></div>`;
-      html += grid ? tileHtml(e, i, cutSet) : rowHtml(e, i, cutSet);
-    });
-    list.innerHTML = html;
+    const gen = ++renderGen;
+    state.rendered = 0;
+    state.els = [];
+    list.innerHTML = grid ? '' : headerHtml();
+    appendItems(0, Math.min(state.view.length, FIRST_CHUNK), grid);
+    if (state.view.length > FIRST_CHUNK) scheduleRest(gen, grid);
+    ui.sel = new Set(state.selected);
+    ui.focus = state.focus;
+    ui.cut = new Set(cutSet);
 
     if (!state.view.length) {
       $('#empty-text').textContent = state.filter || state.search || state.kind !== 'all' ? t('empty.search') : t('empty.folder');
@@ -683,21 +795,26 @@
   }
 
   function refreshSelectionUi() {
-    const kids = $('#list').children;
-    const cutSet = new Set(state.clip && state.clip.cut ? state.clip.paths : []);
-    for (const el of kids) {
-      if (!el.dataset.i) continue;
-      const i = +el.dataset.i;
-      const e = state.view[i];
-      if (!e) continue;
-      el.classList.toggle('sel', state.selected.has(e.path));
-      el.classList.toggle('focus', i === state.focus);
-      el.classList.toggle('cut', cutSet.has(e.path));
-      el.setAttribute('aria-selected', state.selected.has(e.path) ? 'true' : 'false');
+    const cut = cutSetNow();
+    const mark = (path, fn) => {
+      const i = state.pos.get(path);
+      const el = i === undefined ? null : state.els[i];
+      if (el) fn(el);
+    };
+    for (const p of ui.sel) if (!state.selected.has(p)) mark(p, (el) => { el.classList.remove('sel'); el.setAttribute('aria-selected', 'false'); });
+    for (const p of state.selected) if (!ui.sel.has(p)) mark(p, (el) => { el.classList.add('sel'); el.setAttribute('aria-selected', 'true'); });
+    if (ui.focus !== state.focus) {
+      if (state.els[ui.focus]) state.els[ui.focus].classList.remove('focus');
+      if (state.els[state.focus]) state.els[state.focus].classList.add('focus');
     }
+    for (const p of ui.cut) if (!cut.has(p)) mark(p, (el) => el.classList.remove('cut'));
+    for (const p of cut) if (!ui.cut.has(p)) mark(p, (el) => el.classList.add('cut'));
+    ui.sel = new Set(state.selected);
+    ui.focus = state.focus;
+    ui.cut = cut;
     updateCommands();
     updateStatus();
-    renderDetails();
+    queueDetails();
   }
 
   function renderCrumbs() {
@@ -720,7 +837,7 @@
     const expandable = !opts.flat && !(kids && kids.length === 0);
     const open = expandable && tree.open.has(k);
     const active = state.path !== null && samePath(path, state.path) ? ' active' : '';
-    let html = `<div class="side-item${active}" data-path="${esc(path)}" title="${esc(path === HOME ? label : path || label)}" style="--d:${depth}"${opts.flat ? '' : ' data-drop="1"'}${opts.pinned ? ' data-pinned="1"' : ''}>` +
+    let html = `<div class="side-item${active} d${Math.min(depth, 24)}" data-path="${esc(path)}" title="${esc(path === HOME ? label : path || label)}"${opts.flat ? '' : ' data-drop="1"'}${opts.pinned ? ' data-pinned="1"' : ''}>` +
       (expandable ? `<span class="tree-toggle${open ? ' open' : ''}" data-toggle="${esc(path)}"><svg class="icon"><use href="#i-chevron"/></svg></span>` : '<span class="tree-spacer"></span>') +
       `<svg class="icon"><use href="#${icon}"/></svg><span class="lbl">${esc(label)}</span></div>`;
     if (open && kids) {
@@ -739,7 +856,7 @@
     html += settings.pinned.map((p) => treeNode(p, 'i-pin', baseName(p), 0, { pinned: true })).join('');
     html += '<div class="side-title"></div>' + treeNode('', 'i-pc', t('place.thispc'), 0, { flat: true });
     html += state.drives.map((d) => treeNode(d.path, 'i-drive', driveLabel(d), 1)).join('');
-    html += `<div class="side-title"></div><div class="side-item" data-action="recycle" style="--d:0"><span class="tree-spacer"></span><svg class="icon"><use href="#i-trash"/></svg><span class="lbl">${esc(t('place.recycle'))}</span></div>`;
+    html += `<div class="side-title"></div><div class="side-item d0" data-action="recycle"><span class="tree-spacer"></span><svg class="icon"><use href="#i-trash"/></svg><span class="lbl">${esc(t('place.recycle'))}</span></div>`;
     side.innerHTML = html;
     side.scrollTop = top;
   }
@@ -766,7 +883,12 @@
   }
 
   function selectedEntries() {
-    return state.view.filter((e) => state.selected.has(e.path));
+    const out = [];
+    for (const p of state.selected) {
+      const i = state.pos.get(p);
+      if (i !== undefined) out.push([i, state.view[i]]);
+    }
+    return out.sort((a, b) => a[0] - b[0]).map((x) => x[1]);
   }
 
   function updateCommands() {
@@ -804,6 +926,12 @@
 
   /* -------------------------------------------------------------- details pane */
   let detailsToken = 0;
+  let detailsTimer = 0;
+  function queueDetails() {
+    if (!settings.showDetails) return;
+    clearTimeout(detailsTimer);
+    detailsTimer = setTimeout(renderDetails, 70);
+  }
   function renderDetails() {
     const pane = $('#details');
     pane.hidden = !settings.showDetails;
@@ -878,7 +1006,8 @@
 
   function scrollToIndex(i) {
     if (i < 0) return;
-    const el = $(`#list [data-i="${i}"]`);
+    ensureRendered(i);
+    const el = state.els[i];
     if (el) el.scrollIntoView({ block: 'nearest' });
   }
 
@@ -980,6 +1109,7 @@
       }
     } catch { /* fall back to keeping both */ }
     setLoading(true);
+    const stopOp = startOp(mv ? 'op.moving' : 'op.copying');
     try {
       const created = await invoke('paste_items', { sources, dest, mv, policy });
       pushUndo(mv
@@ -992,6 +1122,7 @@
       toast(errText(err));
       await refresh();
     } finally {
+      stopOp();
       setLoading(false);
     }
   }
@@ -1046,7 +1177,8 @@
 
   function beginRename(path) {
     const i = state.view.findIndex((e) => e.path === path);
-    const el = i >= 0 ? $(`#list [data-i="${i}"]`) : null;
+    if (i >= 0) ensureRendered(i);
+    const el = i >= 0 ? state.els[i] : null;
     if (!el) return;
     const e = state.view[i];
     el.scrollIntoView({ block: 'nearest' });
@@ -1154,12 +1286,13 @@
     const used = d.total - d.free;
     const pct = d.total ? Math.round((used / d.total) * 100) : 0;
     $('#props-body').innerHTML =
-      `<div class="props-head"><svg class="icon" style="width:36px;height:36px;color:var(--primary)"><use href="#i-drive"/></svg><b>${esc(driveLabel(d))}</b></div>` +
+      `<div class="props-head"><svg class="icon"><use href="#i-drive"/></svg><b>${esc(driveLabel(d))}</b></div>` +
       propRow(t('props.path'), d.path, true) + propRow(t('props.fs'), d.fs || '—') +
       propRow(t('props.used'), `${fmtSize(used, true)} (${used.toLocaleString()} bytes)`) +
       propRow(t('props.freeSpace'), `${fmtSize(d.free, true)} (${d.free.toLocaleString()} bytes)`) +
       propRow(t('props.capacity'), `${fmtSize(d.total, true)} (${d.total.toLocaleString()} bytes)`) +
-      `<div class="bar"><i style="width:${pct}%"></i></div>`;
+      `<div class="bar"><i data-w="${pct}"></i></div>`;
+    applyWidths($('#props-body'));
     $('#dlg-props').showModal();
   }
 
@@ -1215,6 +1348,38 @@
       await refresh();
     }
   }
+
+  /* ----------------------------------------------- windows, wallpaper, progress */
+  const openNewWindow = (path) => Promise.resolve(invoke('new_window', { path: path === undefined ? state.path : path })).catch((err) => toast(errText(err)));
+  async function setWallpaper(path) {
+    try { await invoke('set_wallpaper', { path }); toast(t('msg.wallpaper')); } catch (err) { toast(errText(err)); }
+  }
+
+  let opActive = false;
+  let opTimer = 0;
+  function startOp(labelKey) {
+    opActive = true;
+    $('#op-title').textContent = t(labelKey);
+    $('#op-name').textContent = '';
+    $('#op-pct').textContent = '';
+    $('#op-fill').style.width = '0%';
+    $('#opcard .op-bar').classList.add('indeterminate');
+    opTimer = setTimeout(() => { $('#opcard').hidden = false; }, 350); // only show for operations that take a while
+    return () => { opActive = false; clearTimeout(opTimer); $('#opcard').hidden = true; };
+  }
+  if (TAURI.event && TAURI.event.listen) {
+    TAURI.event.listen('fileop', (ev) => {
+      if (!opActive) return;
+      const p = ev.payload;
+      $('#op-name').textContent = p.name || '';
+      if (p.total > 0) {
+        $('#opcard .op-bar').classList.remove('indeterminate');
+        $('#op-fill').style.width = Math.min(100, (p.done / p.total) * 100).toFixed(1) + '%';
+        $('#op-pct').textContent = `${fmtSize(p.done, true)} / ${fmtSize(p.total, true)}`;
+      }
+    });
+  }
+  $('#op-cancel').addEventListener('click', () => invoke('cancel_op'));
 
   async function openWith(tool, path) {
     try { await invoke('open_with', { tool, path }); } catch (err) { toast(errText(err)); }
@@ -1349,6 +1514,8 @@
   }
   function moreMenuItems() {
     return [
+      { label: t('cmd.newWindow'), icon: 'i-plus', kbd: 'Ctrl+N', run: () => openNewWindow() },
+      { sep: true },
       { label: t('cmd.selectAll'), icon: 'i-select', kbd: 'Ctrl+A', run: selectAll },
       { label: t('cmd.selectNone'), icon: 'i-select', run: selectNone },
       { label: t('cmd.invert'), icon: 'i-select', run: invertSelection },
@@ -1376,6 +1543,7 @@
 
     if (one && one.isDir) {
       items.push({ label: t('cmd.openNewTab'), icon: 'i-plus', run: () => newTab(one.path) });
+      items.push({ label: t('cmd.openNewWindow'), icon: 'i-open', run: () => openNewWindow(one.path) });
       items.push(...toolItems(one.path, true));
     }
     if (one && !one.isDir) {
@@ -1384,6 +1552,9 @@
       w.push({ label: t('cmd.openNotepad'), icon: 'i-documents', run: () => openWith('notepad', one.path) });
       if (T.winrar && isArchive(one)) w.push({ label: 'WinRAR', icon: 'i-archive', run: () => openWith('winrar', one.path) });
       items.push({ label: t('cmd.openWith'), icon: 'i-open', items: w });
+    }
+    if (one && !one.isDir && ['jpg', 'jpeg', 'png', 'bmp'].includes(extOf(one.name))) {
+      items.push({ label: t('cmd.setWallpaper'), icon: 'i-pictures', run: () => setWallpaper(one.path) });
     }
     if (one && state.search) {
       items.push({ label: t('cmd.openLocation'), icon: 'i-folder', run: () => navigate(parentOf(one.path) || '', { select: [one.path] }) });
@@ -1430,6 +1601,7 @@
     ];
     items.push(...toolItems(state.path, true));
     items.push({ label: t('cmd.openNewTab'), icon: 'i-plus', run: () => newTab(state.path) },
+      { label: t('cmd.openNewWindow'), icon: 'i-open', run: () => openNewWindow(state.path) },
       { label: isPinned(state.path) ? t('cmd.unpin') : t('cmd.pin'), icon: 'i-pin', run: () => togglePin(state.path) },
       { label: t('cmd.copyPathBtn'), icon: 'i-copy-path', run: () => copyText(state.path) },
       { sep: true },
@@ -1444,6 +1616,7 @@
     const items = [
       { label: t('cmd.open'), icon: 'i-open', run: () => navigate(path) },
       { label: t('cmd.openNewTab'), icon: 'i-plus', run: () => newTab(path) },
+      { label: t('cmd.openNewWindow'), icon: 'i-open', run: () => openNewWindow(path) },
       ...toolItems(path, true),
       { sep: true },
       { label: isPinned(path) ? t('cmd.unpin') : t('cmd.pin'), icon: 'i-pin', run: () => togglePin(path) },
@@ -1603,6 +1776,8 @@
     const y1 = e.clientY - rect.top + listEl.scrollTop;
     if (!mq.el) {
       if (Math.abs(x1 - mq.x0) + Math.abs(y1 - mq.y0) < 6) return;
+      ensureRendered(state.view.length - 1);
+      mq.rects = state.els.map((el) => (el ? [el.offsetLeft, el.offsetTop, el.offsetWidth, el.offsetHeight] : null));
       mq.el = document.createElement('div');
       mq.el.className = 'marquee';
       listEl.appendChild(mq.el);
@@ -1615,11 +1790,9 @@
       if (!mq) return;
       mq.raf = 0;
       const next = new Set(mq.base);
-      for (const el of listEl.children) {
-        if (!el.dataset.i) continue;
-        const hit = el.offsetLeft < left + w && el.offsetLeft + el.offsetWidth > left && el.offsetTop < top + h && el.offsetTop + el.offsetHeight > top;
-        if (hit) next.add(state.view[+el.dataset.i].path);
-      }
+      mq.rects.forEach((r, i) => {
+        if (r && r[0] < left + w && r[0] + r[2] > left && r[1] < top + h && r[1] + r[3] > top) next.add(state.view[i].path);
+      });
       state.selected = next;
       state.focus = -1;
       refreshSelectionUi();
@@ -1733,7 +1906,10 @@
     if (tg) { e.stopPropagation(); toggleTree(tg.dataset.toggle); return; }
     const b = e.target.closest('.side-item');
     if (!b) return;
-    if (b.dataset.action === 'recycle') openRecycle(); else navigate(b.dataset.path);
+    if (b.dataset.action === 'recycle') { openRecycle(); return; }
+    const p = b.dataset.path;
+    if (settings.autoExpandTree && p && p !== HOME && b.querySelector('.tree-toggle')) expandNode(p);
+    navigate(p);
   });
   $('#sidebar').addEventListener('auxclick', (e) => {
     const b = e.target.closest('.side-item[data-path]');
@@ -1790,6 +1966,51 @@
   $('#btn-back').addEventListener('contextmenu', (e) => { e.preventDefault(); const items = historyItems('back'); if (items.length) menuBelow(e.currentTarget, items); });
   $('#btn-forward').addEventListener('contextmenu', (e) => { e.preventDefault(); const items = historyItems('fwd'); if (items.length) menuBelow(e.currentTarget, items); });
 
+  /* mouse side buttons: button 3 = Back, 4 = Forward. They arrive as DOM events and, on Windows,
+     as a native "mouse-nav" signal from Rust; both feed one small state machine so a press
+     never navigates twice. */
+  const sideHeld = { back: 0, forward: 0 };
+  const sideUpAt = { back: 0, forward: 0 };
+  const sideKind = (b) => (b === 3 ? 'back' : b === 4 ? 'forward' : null);
+  function fireSideNav(kind) {
+    if (document.querySelector('dialog[open]') || state.renaming) return;
+    if (kind === 'back') goBack(); else goForward();
+  }
+  function sideNav(kind, phase) {
+    const now = Date.now();
+    const held = sideHeld[kind] && now - sideHeld[kind] < 1500;
+    if (phase === 'down') {
+      if (!held) { sideHeld[kind] = now; fireSideNav(kind); }
+      return;
+    }
+    if (now - sideUpAt[kind] < 80) return; // pointerup + mouseup + native up for the same release
+    sideUpAt[kind] = now;
+    if (!held) fireSideNav(kind);          // saw the release but not the press
+    sideHeld[kind] = 0;
+  }
+  ['mousedown', 'pointerdown'].forEach((n) => window.addEventListener(n, (e) => {
+    const k = sideKind(e.button);
+    if (!k) return;
+    e.preventDefault();
+    e.stopPropagation();
+    sideNav(k, 'down');
+  }, true));
+  ['mouseup', 'pointerup'].forEach((n) => window.addEventListener(n, (e) => {
+    const k = sideKind(e.button);
+    if (!k) return;
+    e.preventDefault();
+    e.stopPropagation();
+    sideNav(k, 'up');
+  }, true));
+  window.addEventListener('auxclick', (e) => { if (sideKind(e.button)) { e.preventDefault(); e.stopPropagation(); } }, true);
+  if (TAURI.event && TAURI.event.listen) {
+    TAURI.event.listen('mouse-nav', (ev) => {
+      if (!document.hasFocus()) return; // several windows may be open: only the active one reacts
+      const [kind, phase] = String(ev.payload).split(':');
+      if (kind === 'back' || kind === 'forward') sideNav(kind, phase);
+    });
+  }
+
   async function goBack() {
     if (!state.back.length) return;
     const target = state.back.pop();
@@ -1834,7 +2055,7 @@
     if (document.querySelector('dialog[open]')) return;
     const mod = e.ctrlKey || e.metaKey;
     const k = e.key.toLowerCase();
-    const inField = !!e.target.closest('input, textarea');
+    const inField = !!(e.target.closest && e.target.closest('input, textarea'));
 
     if (e.key === 'Escape') {
       if (menuOpen) { closeMenu(); return; }
@@ -1848,8 +2069,8 @@
     if (mod && e.key === ',') { e.preventDefault(); openSettings(); return; }
     if (inField) return;
 
-    if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); goBack(); return; }
-    if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); goForward(); return; }
+    if ((e.altKey && e.key === 'ArrowLeft') || e.key === 'BrowserBack') { e.preventDefault(); goBack(); return; }
+    if ((e.altKey && e.key === 'ArrowRight') || e.key === 'BrowserForward') { e.preventDefault(); goForward(); return; }
     if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); goUp(); return; }
     if (e.key === 'Backspace') { e.preventDefault(); goBack(); return; }
 
@@ -1863,6 +2084,7 @@
     if (mod && k === 'x') { e.preventDefault(); copyToClipboard(true); return; }
     if (mod && k === 'v') { e.preventDefault(); pasteClipboard(); return; }
     if (mod && e.shiftKey && k === 'n') { e.preventDefault(); newItem(true); return; }
+    if (mod && k === 'n') { e.preventDefault(); openNewWindow(); return; }
     if (mod && k === '1') { e.preventDefault(); setView('details'); return; }
     if (mod && k === '2') { e.preventDefault(); setView('grid'); return; }
     if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); return; }
@@ -1912,7 +2134,11 @@
     $('#seed-input').value = /^#[0-9a-f]{6}$/i.test(settings.seed) ? settings.seed.toLowerCase() : '#6750a4';
     $('#set-hidden').checked = settings.showHidden;
     $('#set-ext').checked = settings.showExt;
-    $('#set-fullscreen').checked = settings.startFullscreen;
+    $('#set-checks').checked = settings.showChecks;
+    $('#set-nav').checked = settings.showNav;
+    $('#set-autotree').checked = settings.autoExpandTree;
+    $('#set-details').checked = settings.showDetails;
+    document.querySelectorAll('#seg-window input').forEach((i) => { i.checked = i.value === settings.windowMode; });
     $('#set-confirm').checked = settings.confirmDelete;
     renderSwatches();
   }
@@ -1925,6 +2151,7 @@
   function applyLanguage() {
     I18n.setLang(settings.lang);
     I18n.apply();
+    hintShortcuts();
     closeMenu();
     renderTabs();
     if (state.path !== null) { render(); renderCrumbs(); renderSidebar(); updateChrome(); }
@@ -1936,7 +2163,10 @@
   $('#seed-input').addEventListener('input', (e) => { settings.seed = e.target.value; saveSettings(); applyTheme(); renderSwatches(); });
   $('#set-hidden').addEventListener('change', (e) => setShowHidden(e.target.checked));
   $('#set-ext').addEventListener('change', (e) => setFlag('showExt', e.target.checked));
-  $('#set-fullscreen').addEventListener('change', (e) => { settings.startFullscreen = e.target.checked; saveSettings(); if (win && win.setFullscreen) Promise.resolve(win.setFullscreen(e.target.checked)).catch(() => {}); });
+  $('#set-checks').addEventListener('change', (e) => setFlag('showChecks', e.target.checked));
+  $('#set-nav').addEventListener('change', (e) => setFlag('showNav', e.target.checked));
+  $('#set-autotree').addEventListener('change', (e) => { settings.autoExpandTree = e.target.checked; saveSettings(); if (e.target.checked && state.path && !isVirtual()) revealInTree(state.path); });
+  $('#set-details').addEventListener('change', (e) => setFlag('showDetails', e.target.checked));
   $('#set-confirm').addEventListener('change', (e) => { settings.confirmDelete = e.target.checked; saveSettings(); });
   $('#btn-reset').addEventListener('click', () => {
     Object.assign(settings, DEFAULTS, {
@@ -1946,6 +2176,14 @@
     saveSettings(); applyTheme(); applyLanguage(); syncSettingsUi();
   });
 
+  const showPanel = (id) => {
+    document.querySelectorAll('.st-tab').forEach((b) => b.classList.toggle('active', b.dataset.panel === id));
+    document.querySelectorAll('.st-panel').forEach((p) => { p.hidden = p.dataset.panel !== id; });
+  };
+  $('#st-nav').addEventListener('click', (e) => {
+    const b = e.target.closest('.st-tab');
+    if (b) showPanel(b.dataset.panel);
+  });
   const openSettings = () => { syncSettingsUi(); $('#dlg-settings').showModal(); };
   $('#btn-settings').addEventListener('click', openSettings);
   $('#settings-close').addEventListener('click', () => closeDlg($('#dlg-settings')));
@@ -1961,7 +2199,7 @@
   Theme.onSystemChange(() => { if (settings.theme === 'system') applyTheme(); });
 
   /* ------------------------------------------------------------ ripple (Material) */
-  const RIPPLE_HOSTS = '.btn-text, .btn-tonal, .btn-filled, .icon-btn, .cmd-btn, .side-item, .crumb, .crumb-arrow, .menu-item, .segmented span, .status-btn';
+  const RIPPLE_HOSTS = '.btn-text, .btn-tonal, .btn-filled, .icon-btn, .cmd-btn, .side-item, .crumb, .crumb-arrow, .menu-item, .segmented span, .status-btn, .st-tab';
   document.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 || reduceMotion()) return;
     const host = e.target.closest(RIPPLE_HOSTS);
@@ -1977,19 +2215,73 @@
     setTimeout(() => dot.remove(), 650);
   }, true);
 
+  /* ------------------------------------------------------- window size options */
+  let saveWindowState = async () => {};
+  async function applyWindowPrefs() {
+    if (!win) return;
+    try {
+      if (settings.windowMode === 'maximized') { await win.maximize(); return; }
+      const s = settings.winState;
+      const PS = TAURI.dpi && TAURI.dpi.PhysicalSize;
+      if (s && PS && s.w >= 400 && s.h >= 300) {
+        await win.setSize(new PS(s.w, s.h));
+        await win.center();
+      }
+      if (s && s.maximized) await win.maximize();
+    } catch { /* keep the default window */ }
+  }
+  function trackWindow() {
+    if (!win || !win.onResized) return;
+    let timer = 0;
+    saveWindowState = async () => {
+      if (settings.windowMode !== 'remember') return;
+      try {
+        if (await win.isFullscreen()) return;
+        const prev = settings.winState || {};
+        if (await win.isMaximized()) {
+          settings.winState = Object.assign({}, prev, { maximized: true });
+        } else {
+          const sz = await win.innerSize();
+          settings.winState = { w: sz.width, h: sz.height, maximized: false };
+        }
+        saveSettings();
+      } catch { /* ignore */ }
+    };
+    win.onResized(() => { clearTimeout(timer); timer = setTimeout(saveWindowState, 350); });
+  }
+  const WINDOW_MODE_HANDLER = () => document.querySelectorAll('#seg-window input').forEach((i) => i.addEventListener('change', () => {
+    settings.windowMode = i.value;
+    saveSettings();
+    if (i.value === 'maximized') { if (win && win.maximize) Promise.resolve(win.maximize()).catch(() => {}); } else saveWindowState();
+  }));
+  WINDOW_MODE_HANDLER();
+
+  /* tooltips with keyboard shortcuts */
+  const HINTS = { 'btn-back': 'Alt+←', 'btn-forward': 'Alt+→', 'btn-up': 'Alt+↑', 'btn-refresh': 'F5', 'cmd-cut': 'Ctrl+X', 'cmd-copy': 'Ctrl+C', 'cmd-paste': 'Ctrl+V', 'cmd-rename': 'F2', 'cmd-delete': 'Del', 'cmd-undo': 'Ctrl+Z', 'btn-newtab': 'Ctrl+T', 'btn-settings': 'Ctrl+,' };
+  function hintShortcuts() {
+    Object.keys(HINTS).forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && el.dataset.i18nTitle) {
+        const v = t(el.dataset.i18nTitle) + ' (' + HINTS[id] + ')';
+        el.title = v;
+        el.setAttribute('aria-label', v);
+      }
+    });
+  }
+
   /* --------------------------------------------------------------------- init */
   async function init() {
     I18n.setLang(settings.lang);
     I18n.apply();
+    hintShortcuts();
     applyTheme();
     syncSettingsUi();
     renderTabs();
     updateChrome();
 
-    // "always start in full screen" option (window size/position are restored by the Rust plugin)
-    if (settings.startFullscreen && win && win.setFullscreen) {
-      try { await win.setFullscreen(true); } catch {}
-    }
+    // window options: remember the last size, or always open maximized
+    await applyWindowPrefs();
+    trackWindow();
 
     // reveal the (initially hidden) window after the first paint
     requestAnimationFrame(() => requestAnimationFrame(() => {

@@ -1,9 +1,9 @@
 {
-  "name": "calendar-app",
+  "name": "material-calendar",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "A Material Design 3 desktop calendar built with Tauri 2",
+  "description": "Material Calendar — a Material Design 3 desktop calendar built with Tauri 2",
   "author": "minhtrong67",
   "license": "MIT",
   "scripts": {
@@ -15,7 +15,10 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.0.0"
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "@tauri-apps/plugin-fs": "^2.0.0",
+    "@tauri-apps/plugin-notification": "^2.0.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",

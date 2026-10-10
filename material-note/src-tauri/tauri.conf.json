@@ -21,6 +21,7 @@
       }
     ],
     "security": {
+      "dangerousDisableAssetCspModification": ["style-src"],
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:"
     }
   },
@@ -50,6 +51,8 @@
     "windows": {
       "nsis": {
         "installerIcon": "icons/installer/installer.ico",
+        "uninstallerIcon": "icons/installer/uninstall.ico",
+        "uninstallerHeaderImage": "icons/installer/nsis-header-uninstall.bmp",
         "headerImage": "icons/installer/nsis-header.bmp",
         "sidebarImage": "icons/installer/nsis-sidebar.bmp",
         "installMode": "currentUser"

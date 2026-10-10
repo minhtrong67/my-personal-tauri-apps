@@ -2,7 +2,10 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Permissions for the Material File main window",
-  "windows": ["main"],
+  "windows": [
+    "main",
+    "w-*"
+  ],
   "permissions": [
     "core:default",
     "core:window:allow-show",
@@ -10,6 +13,9 @@
     "core:window:allow-set-theme",
     "core:window:allow-set-fullscreen",
     "core:window:allow-is-fullscreen",
-    "window-state:default"
+    "core:window:allow-set-size",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-center"
   ]
 }

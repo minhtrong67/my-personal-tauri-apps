@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Calendar",
+  "productName": "Material Calendar",
   "version": "1.0.0",
-  "identifier": "com.minhtrong67.calendar",
+  "identifier": "com.minhtrong67.materialcalendar",
   "build": {
     "beforeDevCommand": "npm run vite:dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,8 @@
     "windows": [
       {
         "label": "main",
-        "title": "Calendar",
+        "title": "Material Calendar",
+        "dragDropEnabled": false,
         "width": 1200,
         "height": 800,
         "minWidth": 860,
@@ -31,8 +32,8 @@
     "publisher": "minhtrong67",
     "copyright": "Copyright (c) 2026 minhtrong67",
     "category": "Productivity",
-    "shortDescription": "Material Design 3 desktop calendar",
-    "longDescription": "A fast, beautiful desktop calendar with month, week, day and agenda views, reminders, recurring events, themes and English/Vietnamese support.",
+    "shortDescription": "Material Calendar — Material Design 3 desktop calendar",
+    "longDescription": "Material Calendar is a fast, beautiful desktop calendar with month, week, day and agenda views, reminders, recurring events, themes and English/Vietnamese support.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

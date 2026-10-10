@@ -11,7 +11,16 @@ use std::{
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
-use tauri::Manager;
+use std::{
+    collections::HashMap,
+    io::{Read, Write},
+    sync::{
+        atomic::{AtomicBool, AtomicU32, Ordering},
+        Arc, Mutex,
+    },
+    time::{Duration, Instant},
+};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 /* ------------------------------------------------------------------ models */
 
@@ -65,6 +74,49 @@ struct Tools {
     sevenzip: bool,
     code: bool,
     terminal: bool,
+}
+
+/// Shared state: cancel flag for the running copy/move and start paths for new windows.
+#[derive(Default)]
+struct OpState {
+    cancel: Arc<AtomicBool>,
+    pending: Mutex<HashMap<String, String>>,
+}
+
+#[derive(Serialize, Clone)]
+struct Progress {
+    done: u64,
+    total: u64,
+    name: String,
+}
+
+/// Tracks bytes copied and emits `fileop` events (throttled) for the progress card.
+struct Tracker {
+    app: AppHandle,
+    cancel: Arc<AtomicBool>,
+    done: u64,
+    total: u64,
+    last: Instant,
+    name: String,
+}
+
+impl Tracker {
+    fn emit(&mut self, force: bool) {
+        if force || self.last.elapsed() >= Duration::from_millis(80) {
+            self.last = Instant::now();
+            let _ = self.app.emit(
+                "fileop",
+                Progress { done: self.done, total: self.total, name: self.name.clone() },
+            );
+        }
+    }
+    fn cancelled(&self) -> bool {
+        self.cancel.load(Ordering::Relaxed)
+    }
+}
+
+fn interrupted() -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::Interrupted, "cancelled")
 }
 
 /* ----------------------------------------------------------------- helpers */
@@ -203,16 +255,74 @@ fn free_name(dir: &Path, name: &str, is_dir: bool, copy_style: bool) -> PathBuf 
     }
 }
 
-fn copy_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
+fn tree_size(p: &Path) -> u64 {
+    match fs::metadata(p) {
+        Ok(md) if md.is_dir() => fs::read_dir(p)
+            .map(|rd| rd.flatten().map(|e| tree_size(&e.path())).sum())
+            .unwrap_or(0),
+        Ok(md) => md.len(),
+        Err(_) => 0,
+    }
+}
+
+/// Recursive copy that reports progress and honours the cancel flag.
+fn copy_tracked(src: &Path, dst: &Path, tr: &mut Tracker) -> std::io::Result<()> {
+    if tr.cancelled() {
+        return Err(interrupted());
+    }
     if src.is_dir() {
         fs::create_dir(dst)?;
         for item in fs::read_dir(src)? {
             let item = item?;
-            copy_recursive(&item.path(), &dst.join(item.file_name()))?;
+            copy_tracked(&item.path(), &dst.join(item.file_name()), tr)?;
         }
-        Ok(())
-    } else {
-        fs::copy(src, dst).map(|_| ())
+        return Ok(());
+    }
+    tr.name = src.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let md = fs::metadata(src)?;
+    if md.len() < 8 * 1024 * 1024 {
+        // small files: the OS copy keeps timestamps and attributes
+        fs::copy(src, dst)?;
+        tr.done += md.len();
+        tr.emit(false);
+        return Ok(());
+    }
+    let mut r = fs::File::open(src)?;
+    let mut w = fs::File::create(dst)?;
+    let mut buf = vec![0u8; 1 << 20];
+    loop {
+        if tr.cancelled() {
+            drop(w);
+            let _ = fs::remove_file(dst);
+            return Err(interrupted());
+        }
+        let n = r.read(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        w.write_all(&buf[..n])?;
+        tr.done += n as u64;
+        tr.emit(false);
+    }
+    if let Ok(modified) = md.modified() {
+        let _ = w.set_times(fs::FileTimes::new().set_modified(modified));
+    }
+    let _ = fs::set_permissions(dst, md.permissions());
+    Ok(())
+}
+
+/// Maps a copy result to a command error, removing a half-written target after a cancel.
+fn finish_copy(res: std::io::Result<()>, target: &Path, tr: &Tracker) -> Result<(), String> {
+    match res {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            if tr.cancelled() {
+                let _ = if target.is_dir() { fs::remove_dir_all(target) } else { fs::remove_file(target) };
+                Err("cancelled".into())
+            } else {
+                Err(e.to_string())
+            }
+        }
     }
 }
 
@@ -396,7 +506,19 @@ async fn check_conflicts(sources: Vec<String>, dest: String) -> Vec<String> {
 /// Copy (`mv = false`) or move (`mv = true`) items into `dest`. `policy` decides what happens
 /// when a name already exists: "rename" (keep both), "replace" or "skip". Returns the new paths.
 #[tauri::command]
-async fn paste_items(sources: Vec<String>, dest: String, mv: bool, policy: String) -> Result<Vec<String>, String> {
+async fn paste_items(
+    app: AppHandle,
+    state: State<'_, OpState>,
+    sources: Vec<String>,
+    dest: String,
+    mv: bool,
+    policy: String,
+) -> Result<Vec<String>, String> {
+    state.cancel.store(false, Ordering::SeqCst);
+    let mut tr = Tracker { app, cancel: state.cancel.clone(), done: 0, total: 0, last: Instant::now(), name: String::new() };
+    if !mv {
+        tr.total = sources.iter().map(|s| tree_size(Path::new(s))).sum();
+    }
     let dest_dir = PathBuf::from(&dest);
     let mut created = Vec::new();
     for s in &sources {
@@ -430,14 +552,19 @@ async fn paste_items(sources: Vec<String>, dest: String, mv: bool, policy: Strin
         };
         if mv {
             if fs::rename(&src, &target).is_err() {
-                copy_recursive(&src, &target).map_err(|e| e.to_string())?;
+                // different volume: copy with progress, then remove the source
+                tr.total += tree_size(&src);
+                let res = copy_tracked(&src, &target, &mut tr);
+                finish_copy(res, &target, &tr)?;
                 let _ = if is_dir { fs::remove_dir_all(&src) } else { fs::remove_file(&src) };
             }
         } else {
-            copy_recursive(&src, &target).map_err(|e| e.to_string())?;
+            let res = copy_tracked(&src, &target, &mut tr);
+            finish_copy(res, &target, &tr)?;
         }
         created.push(target.to_string_lossy().into_owned());
     }
+    tr.emit(true);
     Ok(created)
 }
 
@@ -655,27 +782,132 @@ async fn preview_text(path: String) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&buf).into_owned())
 }
 
-/// Folder passed on the command line, if any.
+/// Start folder: a path queued for a new window, or the folder passed on the command line.
 #[tauri::command]
-fn startup_path() -> Option<String> {
-    std::env::args()
-        .nth(1)
-        .filter(|a| Path::new(a).is_dir())
+fn startup_path(window: tauri::WebviewWindow, state: State<'_, OpState>) -> Option<String> {
+    if let Some(p) = state.pending.lock().ok().and_then(|mut m| m.remove(window.label())) {
+        return Some(p);
+    }
+    if window.label() == "main" {
+        return std::env::args().nth(1).filter(|a| Path::new(a).is_dir());
+    }
+    None
+}
+
+#[tauri::command]
+fn cancel_op(state: State<'_, OpState>) {
+    state.cancel.store(true, Ordering::SeqCst);
+}
+
+static WINDOW_SEQ: AtomicU32 = AtomicU32::new(1);
+
+/// Opens another Material File window (optionally at `path`).
+#[tauri::command]
+async fn new_window(app: AppHandle, state: State<'_, OpState>, path: Option<String>) -> Result<(), String> {
+    let label = format!("w-{}", WINDOW_SEQ.fetch_add(1, Ordering::SeqCst));
+    if let (Some(p), Ok(mut m)) = (path, state.pending.lock()) {
+        m.insert(label.clone(), p);
+    }
+    let window = tauri::WebviewWindowBuilder::new(&app, &label, tauri::WebviewUrl::App("index.html".into()))
+        .title("Material File")
+        .inner_size(1120.0, 720.0)
+        .min_inner_size(720.0, 420.0)
+        .center()
+        .visible(false)
+        .disable_drag_drop_handler()
+        .build()
+        .map_err(|e| e.to_string())?;
+    if let Some(icon) = app.default_window_icon().cloned() {
+        let _ = window.set_icon(icon);
+    }
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_secs(4));
+        let _ = window.show(); // safety net; the page shows it after the first paint
+    });
+    Ok(())
+}
+
+/// Windows only: use an image as the desktop background.
+#[tauri::command]
+fn set_wallpaper(path: String) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        #[link(name = "user32")]
+        extern "system" {
+            fn SystemParametersInfoW(action: u32, param: u32, pv: *mut std::ffi::c_void, flags: u32) -> i32;
+        }
+        let mut wide: Vec<u16> = std::ffi::OsStr::new(&path).encode_wide().chain(std::iter::once(0)).collect();
+        // SPI_SETDESKWALLPAPER, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE
+        let ok = unsafe { SystemParametersInfoW(0x0014, 0, wide.as_mut_ptr() as *mut std::ffi::c_void, 0x03) };
+        if ok != 0 { Ok(()) } else { Err("wallpaper-failed".into()) }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = path;
+        Err("unsupported".into())
+    }
+}
+
+/// Windows only: watches the two mouse side buttons (XBUTTON1 = Back, XBUTTON2 = Forward) and
+/// emits `mouse-nav` events ("back:down", "back:up", "forward:down", "forward:up") while one of
+/// our windows is in the foreground. WebView2 does not reliably deliver these buttons to the page,
+/// so the page listens to both the DOM events and this native signal.
+#[cfg(windows)]
+mod mouse_nav {
+    use std::{thread, time::Duration};
+    use tauri::{AppHandle, Emitter};
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn GetAsyncKeyState(vkey: i32) -> i16;
+        fn GetForegroundWindow() -> isize;
+        fn GetWindowThreadProcessId(hwnd: isize, pid: *mut u32) -> u32;
+    }
+
+    pub fn start(app: AppHandle) {
+        thread::spawn(move || {
+            let me = std::process::id();
+            let (mut back, mut fwd) = (false, false);
+            loop {
+                thread::sleep(Duration::from_millis(12));
+                let (b, f) = unsafe {
+                    (
+                        (GetAsyncKeyState(0x05) as u16 & 0x8000) != 0,
+                        (GetAsyncKeyState(0x06) as u16 & 0x8000) != 0,
+                    )
+                };
+                if b != back || f != fwd {
+                    let ours = unsafe {
+                        let hwnd = GetForegroundWindow();
+                        let mut pid = 0u32;
+                        if hwnd != 0 {
+                            GetWindowThreadProcessId(hwnd, &mut pid);
+                        }
+                        pid == me
+                    };
+                    if ours {
+                        if b != back {
+                            let _ = app.emit("mouse-nav", if b { "back:down" } else { "back:up" });
+                        }
+                        if f != fwd {
+                            let _ = app.emit("mouse-nav", if f { "forward:down" } else { "forward:up" });
+                        }
+                    }
+                    back = b;
+                    fwd = f;
+                }
+            }
+        });
+    }
 }
 
 fn main() {
     tauri::Builder::default()
-        .plugin(
-            // remember window size / position / maximized state between launches
-            tauri_plugin_window_state::Builder::default()
-                .with_state_flags(
-                    tauri_plugin_window_state::StateFlags::SIZE
-                        | tauri_plugin_window_state::StateFlags::POSITION
-                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
-                )
-                .build(),
-        )
+        .manage(OpState::default())
         .setup(|app| {
+            #[cfg(windows)]
+            mouse_nav::start(app.handle().clone());
             // The window starts hidden and the page shows it after the first paint (no white
             // flash). This is a safety net in case the page never signals readiness.
             if let Some(window) = app.get_webview_window("main") {
@@ -707,7 +939,10 @@ fn main() {
             extract_archive,
             compress_items,
             preview_text,
-            startup_path
+            startup_path,
+            cancel_op,
+            new_window,
+            set_wallpaper
         ])
         .run(tauri::generate_context!())
         .expect("error while running Material File");

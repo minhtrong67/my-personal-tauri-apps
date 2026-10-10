@@ -1,6 +1,6 @@
 const dict = {
   en: {
-    'app.name': 'Calendar', today: 'Today', month: 'Month', week: 'Week', day: 'Day', agenda: 'Agenda',
+    'app.name': 'Material Calendar', today: 'Today', month: 'Month', week: 'Week', day: 'Day', agenda: 'Agenda',
     create: 'Create', search: 'Search events', settings: 'Settings', upcoming: 'Upcoming',
     noUpcoming: 'Nothing coming up', more: 'more', allDay: 'All day', newEvent: 'New event',
     editEvent: 'Edit event', title: 'Title', date: 'Date', start: 'Start', end: 'End', repeat: 'Repeat',
@@ -18,10 +18,14 @@ const dict = {
     's.holidays': 'Show public holidays (Vietnam)', 's.anim': 'Animations', 's.about': 'About',
     's.author': 'Author', 's.assist': 'Built with help from', 's.version': 'Version',
     'h.newYear': "New Year's Day", 'h.liberation': 'Reunification Day', 'h.labour': 'International Labour Day', 'h.national': 'National Day',
+    wk: 'W', lunar: 'Lunar', 's.lunar': 'Show lunar calendar', 's.weekNums': 'Show week numbers', 's.timeFmt': 'Time format', 's.notify': 'System notifications for reminders', notifyOn: 'Notifications are on',
+    'h.tet': 'Lunar New Year (Tết)', 'h.lantern': 'Lantern Festival', 'h.hung': 'Hung Kings Commemoration', 'h.doanngo': 'Dragon Boat Festival', 'h.midautumn': 'Mid-Autumn Festival',
+    loc: 'Location', duplicate: 'Duplicate', duplicated: 'Event duplicated', moved: 'Event moved', snooze: 'Snooze 5 min',
+    's.data': 'Data', export: 'Export events', import: 'Import events', exported: 'Exported {n} events', imported: 'Imported {n} events', importBad: 'Could not read that file',
     shortcuts: 'Shortcuts: N new · T today · M/W/D/A views · ←/→ navigate · Ctrl+K search',
   },
   vi: {
-    'app.name': 'Lịch', today: 'Hôm nay', month: 'Tháng', week: 'Tuần', day: 'Ngày', agenda: 'Lịch trình',
+    'app.name': 'Material Calendar', today: 'Hôm nay', month: 'Tháng', week: 'Tuần', day: 'Ngày', agenda: 'Lịch trình',
     create: 'Tạo sự kiện', search: 'Tìm sự kiện', settings: 'Cài đặt', upcoming: 'Sắp tới',
     noUpcoming: 'Không có sự kiện sắp tới', more: 'nữa', allDay: 'Cả ngày', newEvent: 'Sự kiện mới',
     editEvent: 'Sửa sự kiện', title: 'Tiêu đề', date: 'Ngày', start: 'Bắt đầu', end: 'Kết thúc', repeat: 'Lặp lại',
@@ -39,6 +43,10 @@ const dict = {
     's.holidays': 'Hiển thị ngày lễ (Việt Nam)', 's.anim': 'Hiệu ứng chuyển động', 's.about': 'Giới thiệu',
     's.author': 'Tác giả', 's.assist': 'Với sự hỗ trợ của', 's.version': 'Phiên bản',
     'h.newYear': 'Tết Dương lịch', 'h.liberation': 'Ngày Giải phóng miền Nam', 'h.labour': 'Quốc tế Lao động', 'h.national': 'Quốc khánh',
+    wk: 'Tuần ', lunar: 'Âm lịch', 's.lunar': 'Hiển thị âm lịch', 's.weekNums': 'Hiển thị số tuần', 's.timeFmt': 'Định dạng giờ', 's.notify': 'Thông báo hệ thống cho nhắc nhở', notifyOn: 'Đã bật thông báo',
+    'h.tet': 'Tết Nguyên đán', 'h.lantern': 'Rằm tháng Giêng', 'h.hung': 'Giỗ Tổ Hùng Vương', 'h.doanngo': 'Tết Đoan Ngọ', 'h.midautumn': 'Tết Trung thu',
+    loc: 'Địa điểm', duplicate: 'Nhân bản', duplicated: 'Đã nhân bản sự kiện', moved: 'Đã chuyển sự kiện', snooze: 'Báo lại sau 5 phút',
+    's.data': 'Dữ liệu', export: 'Xuất sự kiện', import: 'Nhập sự kiện', exported: 'Đã xuất {n} sự kiện', imported: 'Đã nhập {n} sự kiện', importBad: 'Không đọc được tệp này',
     shortcuts: 'Phím tắt: N tạo mới · T hôm nay · M/W/D/A đổi chế độ xem · ←/→ chuyển kỳ · Ctrl+K tìm kiếm',
   },
 };

@@ -1,0 +1,24 @@
+:root {
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0, 0, 0, 1);
+  --r-xs: 4px; --r-s: 8px; --r-m: 12px; --r-l: 16px; --r-xl: 28px; --r-full: 999px;
+  --e1: 0 1px 2px rgb(0 0 0 / 0.22), 0 1px 3px 1px rgb(0 0 0 / 0.1);
+  --e2: 0 1px 2px rgb(0 0 0 / 0.22), 0 2px 6px 2px rgb(0 0 0 / 0.12);
+  --e3: 0 4px 8px 3px rgb(0 0 0 / 0.14), 0 1px 3px rgb(0 0 0 / 0.22);
+
+  /* fallback palette (overwritten at runtime by the Material 3 generator in theme.js) */
+  --md-primary: #0b57d0; --md-on-primary: #fff;
+  --md-primary-container: #d3e3fd; --md-on-primary-container: #041e49;
+  --md-secondary: #565f71; --md-secondary-container: #dae2f9; --md-on-secondary-container: #131c2b;
+  --md-tertiary-container: #fbd7fc;
+  --md-error: #ba1a1a; --md-error-container: #ffdad6; --md-on-error-container: #410002; --md-on-tertiary-container: #2a122e;
+  --md-surface: #f9f9ff; --md-on-surface: #191c20; --md-on-surface-variant: #44474e;
+  --md-outline: #74777f; --md-outline-variant: #c4c6d0; --md-scrim: #000;
+  --md-inverse-surface: #2e3036; --md-inverse-on-surface: #f0f0f7; --md-inverse-primary: #aac7ff;
+  --md-surface-container-lowest: #fff; --md-surface-container-low: #f3f3fa; --md-surface-container: #ededf4;
+  --md-surface-container-high: #e8e7ee; --md-surface-container-highest: #e2e2e9;
+
+  --wx-cloud: #9db2c9; --wx-cloud2: #7d93ab;
+}
+:root[data-scheme='dark'] { --wx-cloud: #cfd8e3; --wx-cloud2: #9aa8ba; --e1: 0 1px 2px rgb(0 0 0 / 0.5); }

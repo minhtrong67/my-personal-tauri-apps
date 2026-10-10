@@ -2,6 +2,10 @@ import './styles.css';
 import { t, setLang, locale } from './i18n.js';
 import { applyTheme, PRESETS } from './theme.js';
 import { initWindow, captureSize } from './window.js';
+import { save, open as openDlg } from '@tauri-apps/plugin-dialog';
+import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
+import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification';
+import { lunar, canChi } from './lunar.js';
 
 /* ───────── helpers ───────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -30,7 +34,7 @@ const I = {
 /* ───────── state ───────── */
 const COLORS = ['#1a73e8', '#d93025', '#e37400', '#188038', '#a142f4', '#d01884', '#007b83', '#5f6368'];
 const HOUR = 52;
-const DEF = { lang: 'auto', theme: 'system', seed: PRESETS[0], windowMode: 'remember', winSize: null, weekStart: 1, holidays: true, anim: true, view: 'month' };
+const DEF = { lang: 'auto', theme: 'system', seed: PRESETS[0], windowMode: 'remember', winSize: null, weekStart: 1, holidays: true, anim: true, lunar: true, weekNums: false, timeFmt: '24', notify: true, view: 'month' };
 const load = (k, f) => { try { return JSON.parse(localStorage.getItem(k)) ?? f; } catch { return f; } };
 const settings = { ...DEF, ...load('cal.settings', {}) };
 let events = load('cal.events', []);
@@ -45,7 +49,24 @@ const onSize = (s) => { settings.winSize = s; persist(); };
 
 /* ───────── date logic ───────── */
 const HOL = { '01-01': 'newYear', '04-30': 'liberation', '05-01': 'labour', '09-02': 'national' };
-const holiday = (d) => (settings.holidays ? HOL[`${pad(d.getMonth() + 1)}-${pad(d.getDate())}`] : null);
+const LHOL = { '1/1': 'tet', '2/1': 'tet', '3/1': 'tet', '15/1': 'lantern', '10/3': 'hung', '5/5': 'doanngo', '15/8': 'midautumn' };
+function holiday(d) {
+  if (!settings.holidays) return null;
+  const s = HOL[`${pad(d.getMonth() + 1)}-${pad(d.getDate())}`]; if (s) return s;
+  const l = lunar(d);
+  return l.leap ? null : LHOL[`${l.d}/${l.m}`] || null;
+}
+const lunarShort = (d) => { const l = lunar(d); return `${l.d}/${l.m}${l.leap ? '+' : ''}`; };
+const ft = (hm) => {
+  if (!hm || settings.timeFmt !== '12') return hm || '';
+  const [h, m] = hm.split(':').map(Number);
+  return `${h % 12 || 12}:${pad(m)} ${h < 12 ? 'AM' : 'PM'}`;
+};
+const isoWeek = (d) => {
+  const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  x.setUTCDate(x.getUTCDate() + 4 - (x.getUTCDay() || 7));
+  return Math.ceil(((x - Date.UTC(x.getUTCFullYear(), 0, 1)) / 864e5 + 1) / 7);
+};
 const weekStart = (d) => addDays(d, -((d.getDay() - settings.weekStart + 7) % 7));
 
 function occurs(e, d) {
@@ -105,7 +126,11 @@ function shell() {
 
 function titleText() {
   const v = settings.view;
-  if (v === 'day') return cap(fmt({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }, cursor));
+  if (v === 'day') {
+    const base = cap(fmt({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }, cursor));
+    if (!settings.lunar) return base;
+    const l = lunar(cursor); return `${base} · ${t('lunar')} ${l.d}/${l.m}${l.leap ? '+' : ''} ${canChi(l.y)}`;
+  }
   if (v === 'week') {
     const s = weekStart(cursor), e = addDays(s, 6);
     if (s.getMonth() === e.getMonth()) return `${s.getDate()} – ${e.getDate()}, ${cap(fmt({ month: 'long', year: 'numeric' }, e))}`;
@@ -115,7 +140,7 @@ function titleText() {
 }
 
 /* ───────── views ───────── */
-const chip = (e, ds) => `<button class="chip" data-action="edit" data-id="${e.id}" data-date="${ds}" style="--c:${e.color}" title="${esc(e.title)}">${e.allDay ? '' : `<em>${e.start}</em> `}${esc(e.title)}</button>`;
+const chip = (e, ds) => `<button class="chip" draggable="true" data-action="edit" data-id="${e.id}" data-date="${ds}" style="--c:${e.color}" title="${esc(e.title)}">${e.allDay ? '' : `<em>${ft(e.start)}</em> `}${esc(e.title)}</button>`;
 const dowNames = (n = 7, style = 'short') => Array.from({ length: n }, (_, i) => fmt({ weekday: style }, new Date(2024, 0, 7 + settings.weekStart + i)));
 
 function monthView() {
@@ -127,7 +152,7 @@ function monthView() {
     const d = addDays(start, i), ds = ymd(d), list = eventsOn(d), hol = holiday(d);
     const shown = list.slice(0, 3);
     h += `<div class="cell ${d.getMonth() !== cursor.getMonth() ? 'dim' : ''} ${ds === todayS ? 'today' : ''}" data-action="cell" data-date="${ds}" style="--i:${i}">
-      <span class="num">${d.getDate()}</span>${hol ? `<div class="hol" title="${t('h.' + hol)}">${t('h.' + hol)}</div>` : ''}
+      ${settings.weekNums && i % 7 === 0 ? `<span class="wk">${t('wk')}${isoWeek(addDays(d, 3))}</span>` : ''}${settings.lunar ? `<span class="lunar">${lunar(d).d === 1 ? lunarShort(d) : lunar(d).d}</span>` : ''}<span class="num">${d.getDate()}</span>${hol ? `<div class="hol" title="${t('h.' + hol)}">${t('h.' + hol)}</div>` : ''}
       ${shown.map((e) => chip(e, ds)).join('')}${list.length > 3 ? `<button class="more" data-action="goto" data-date="${ds}">+${list.length - 3} ${t('more')}</button>` : ''}</div>`;
   }
   return h + '</div></div>';
@@ -135,16 +160,16 @@ function monthView() {
 
 function timeGrid(days) {
   const now = new Date(), todayS = ymd(now);
-  const hours = Array.from({ length: 23 }, (_, i) => `<span style="top:${(i + 1) * HOUR}px">${pad(i + 1)}:00</span>`).join('');
-  let h = `<div class="tg" style="--cols:${days.length};--h:${HOUR}px"><div class="tg-head"><div></div>`;
-  h += days.map((d) => { const ds = ymd(d), hol = holiday(d); return `<div class="th ${ds === todayS ? 'today' : ''}" data-action="goto" data-date="${ds}" ${hol ? `title="${t('h.' + hol)}"` : ''}><small>${fmt({ weekday: 'short' }, d)}</small><b>${d.getDate()}</b></div>`; }).join('');
+  const hours = Array.from({ length: 23 }, (_, i) => `<span style="top:${(i + 1) * HOUR}px">${ft(pad(i + 1) + ':00')}</span>`).join('');
+  let h = `<div class="tg" style="--cols:${days.length};--h:${HOUR}px"><div class="tg-head"><div class="wkn">${settings.weekNums ? t('wk') + isoWeek(addDays(days[0], 3)) : ''}</div>`;
+  h += days.map((d) => { const ds = ymd(d), hol = holiday(d); return `<div class="th ${ds === todayS ? 'today' : ''}" data-action="goto" data-date="${ds}" ${hol ? `title="${t('h.' + hol)}"` : ''}><small>${fmt({ weekday: 'short' }, d)}</small><b>${d.getDate()}</b>${settings.lunar ? `<em class="lunar-s">${lunarShort(d)}</em>` : ''}</div>`; }).join('');
   h += `</div><div class="tg-allday"><div class="gut"><small>${t('allDay')}</small></div>`;
   h += days.map((d) => { const ds = ymd(d); return `<div class="ad" data-action="cell" data-date="${ds}">${eventsOn(d).filter((e) => e.allDay).map((e) => chip(e, ds)).join('')}</div>`; }).join('');
   h += `</div><div class="tg-scroll"><div class="tg-body" style="height:${24 * HOUR}px"><div class="gut">${hours}</div>`;
   h += days.map((d) => {
     const ds = ymd(d);
     const blocks = lanes(eventsOn(d).filter((e) => !e.allDay)).map(({ e, s, en, lane, n }) =>
-      `<button class="ev" data-action="edit" data-id="${e.id}" data-date="${ds}" style="--c:${e.color};top:${(s / 60) * HOUR}px;height:${Math.max(((en - s) / 60) * HOUR - 2, 22)}px;left:calc(${(lane / n) * 100}% + 2px);width:calc(${100 / n}% - 4px)"><b>${esc(e.title)}</b><small>${e.start}${e.end ? '–' + e.end : ''}</small></button>`).join('');
+      `<button class="ev" draggable="true" data-action="edit" data-id="${e.id}" data-date="${ds}" style="--c:${e.color};top:${(s / 60) * HOUR}px;height:${Math.max(((en - s) / 60) * HOUR - 2, 22)}px;left:calc(${(lane / n) * 100}% + 2px);width:calc(${100 / n}% - 4px)"><b>${esc(e.title)}</b><small>${ft(e.start)}${e.end ? '–' + ft(e.end) : ''}${e.loc ? ' · ' + esc(e.loc) : ''}</small></button>`).join('');
     const nowLine = ds === todayS ? `<div class="now" style="top:${((now.getHours() * 60 + now.getMinutes()) / 60) * HOUR}px"></div>` : '';
     return `<div class="col ${ds === todayS ? 'today' : ''}" data-action="col" data-date="${ds}">${blocks}${nowLine}</div>`;
   }).join('');
@@ -161,7 +186,7 @@ function agendaView() {
     if (!list.length && !hol) continue;
     h += `<section style="--i:${Math.min(n++, 12)}"><div class="a-date ${ds === todayS ? 'today' : ''}"><b>${d.getDate()}</b><small>${fmt({ weekday: 'short', month: 'short' }, d)}</small></div><div class="a-list">`;
     if (hol) h += `<div class="a-hol">${t('h.' + hol)}</div>`;
-    h += list.map((e) => `<button class="a-ev" data-action="edit" data-id="${e.id}" data-date="${ds}" style="--c:${e.color}"><span class="a-time">${e.allDay ? t('allDay') : e.start + (e.end ? ' – ' + e.end : '')}</span><b>${esc(e.title)}</b>${e.desc ? `<small>${esc(e.desc)}</small>` : ''}</button>`).join('');
+    h += list.map((e) => `<button class="a-ev" data-action="edit" data-id="${e.id}" data-date="${ds}" style="--c:${e.color}"><span class="a-time">${e.allDay ? t('allDay') : ft(e.start) + (e.end ? ' – ' + ft(e.end) : '')}</span><b>${esc(e.title)}</b>${e.loc || e.desc ? `<small>${esc([e.loc, e.desc].filter(Boolean).join(' · '))}</small>` : ''}</button>`).join('');
     h += '</div></section>';
   }
   if (!n) h += `<div class="empty">${I.logo}<p>${t('noUpcoming')}</p></div>`;
@@ -192,7 +217,7 @@ function upcomingList() {
       out.push({ e, d, i }); if (out.length >= 5) break;
     }
   }
-  const body = out.length ? out.map(({ e, d, i }) => `<button class="up rp" data-action="edit" data-id="${e.id}" data-date="${ymd(d)}" style="--c:${e.color}"><span><b>${esc(e.title)}</b><small>${i === 0 ? t('today') : fmt({ weekday: 'short', day: 'numeric', month: 'short' }, d)}${e.allDay ? '' : ' · ' + e.start}</small></span></button>`).join('') : `<p class="muted">${t('noUpcoming')}</p>`;
+  const body = out.length ? out.map(({ e, d, i }) => `<button class="up rp" data-action="edit" data-id="${e.id}" data-date="${ymd(d)}" style="--c:${e.color}"><span><b>${esc(e.title)}</b><small>${i === 0 ? t('today') : fmt({ weekday: 'short', day: 'numeric', month: 'short' }, d)}${e.allDay ? '' : ' · ' + ft(e.start)}</small></span></button>`).join('') : `<p class="muted">${t('noUpcoming')}</p>`;
   return `<h3>${t('upcoming')}</h3>${body}`;
 }
 
@@ -227,7 +252,9 @@ function toast(msg, label, fn, ms = 4500) {
   el.innerHTML = `<span>${esc(msg)}</span>${label ? `<button class="btn text rp">${esc(label)}</button>` : ''}`;
   const kill = () => { el.classList.add('out'); setTimeout(() => el.remove(), 250); };
   if (label) el.querySelector('button').onclick = () => { fn(); kill(); };
-  $('#toasts').append(el);
+  const box = $('#toasts');
+  box.append(el);
+  try { if (box.matches(':popover-open')) box.hidePopover(); box.showPopover(); } catch { /* popover unsupported */ }
   setTimeout(kill, ms);
 }
 
@@ -240,13 +267,14 @@ function openEvent(id, date, startMin) {
     const now = new Date();
     let s = startMin ?? (ds === ymd(now) ? Math.min(23 * 60, (now.getHours() + 1) * 60) : 9 * 60);
     const tm = (m) => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`;
-    e = { title: '', desc: '', date: ds, start: tm(s), end: tm(Math.min(s + 60, 23 * 60 + 59)), allDay: false, color: COLORS[0], repeat: 'none', remind: -1 };
+    e = { title: '', loc: '', desc: '', date: ds, start: tm(s), end: tm(Math.min(s + 60, 23 * 60 + 59)), allDay: false, color: COLORS[0], repeat: 'none', remind: -1 };
   }
   const opt = (v, cur, label) => `<option value="${v}" ${String(v) === String(cur) ? 'selected' : ''}>${label}</option>`;
   const d = $('#evDlg');
   d.innerHTML = `<form id="evForm" novalidate data-id="${id || ''}">
     <h2>${id ? t('editEvent') : t('newEvent')}</h2>
     <label class="tf"><input name="title" placeholder=" " value="${esc(e.title)}" maxlength="120" autocomplete="off"><span>${t('title')}</span></label>
+    <label class="tf"><input name="loc" placeholder=" " value="${esc(e.loc || '')}" maxlength="120" autocomplete="off"><span>${t('loc')}</span></label>
     <div class="row"><label class="tf float"><input type="date" name="date" value="${e.date}"><span>${t('date')}</span></label>
       <label class="switch"><input type="checkbox" name="allDay" ${e.allDay ? 'checked' : ''}><i></i><b>${t('allDay')}</b></label></div>
     <div class="row" id="times" ${e.allDay ? 'hidden' : ''}>
@@ -257,7 +285,7 @@ function openEvent(id, date, startMin) {
       <label class="tf float sel"><select name="remind">${[-1, 0, 5, 15, 30, 60].map((r) => opt(r, e.remind, t('rm.' + r))).join('')}</select><span>${t('remind')}</span></label></div>
     <div class="colors" role="radiogroup" aria-label="${t('desc')}">${COLORS.map((c) => `<label><input type="radio" name="color" value="${c}" ${c === e.color ? 'checked' : ''}><i style="--c:${c}"></i></label>`).join('')}</div>
     <label class="tf"><textarea name="desc" rows="3" placeholder=" ">${esc(e.desc)}</textarea><span>${t('desc')}</span></label>
-    <div class="actions">${id ? `<button type="button" class="btn text danger rp" data-action="del" data-id="${id}">${t('delete')}</button>` : ''}<span class="spacer"></span>
+    <div class="actions">${id ? `<button type="button" class="btn text danger rp" data-action="del" data-id="${id}">${t('delete')}</button>` : ''}${id ? `<button type="button" class="btn text rp" data-action="dup" data-id="${id}">${t('duplicate')}</button>` : ''}<span class="spacer"></span>
       <button type="button" class="btn text rp" data-action="closeDlg">${t('cancel')}</button><button type="submit" class="btn filled rp">${t('save')}</button></div></form>`;
   d.showModal();
   if (!id) d.querySelector('[name=title]').focus();
@@ -275,7 +303,7 @@ function submitEvent(form) {
   const start = f.get('start') || '09:00', end = f.get('end') || '';
   if (!allDay && end && mins(end) <= mins(start)) return bad('end', t('badTime'));
   if (!f.get('date')) return bad('date', t('needTitle'));
-  const data = { title, desc: (f.get('desc') || '').trim(), date: f.get('date'), allDay, start: allDay ? '' : start, end: allDay ? '' : end, color: f.get('color'), repeat: f.get('repeat'), remind: Number(f.get('remind')) };
+  const data = { title, loc: (f.get('loc') || '').trim(), desc: (f.get('desc') || '').trim(), date: f.get('date'), allDay, start: allDay ? '' : start, end: allDay ? '' : end, color: f.get('color'), repeat: f.get('repeat'), remind: Number(f.get('remind')) };
   if (id) events = events.map((e) => (e.id === id ? { ...e, ...data } : e));
   else events.push({ id: newId(), ...data });
   saveEvents(); fired.clear(); $('#evDlg').close(); render(); toast(t('saved'));
@@ -305,7 +333,9 @@ function fillSettings() {
     <section><h3>${t('s.window')}</h3><div class="opts">${opt2('remember', t('w.remember'), t('w.rememberD'))}${opt2('maximized', t('w.max'), t('w.maxD'))}</div></section>
     <section><h3>${t('s.calendar')}</h3>
       <div class="set-row"><span>${t('s.weekStart')}</span>${seg('weekStart', [[1, t('d.mon')], [0, t('d.sun')]])}</div>
-      ${sw('holidays', t('s.holidays'))}${sw('anim', t('s.anim'))}</section>
+      <div class="set-row"><span>${t('s.timeFmt')}</span>${seg('timeFmt', [['24', '24h'], ['12', '12h AM/PM']])}</div>
+      ${sw('lunar', t('s.lunar'))}${sw('weekNums', t('s.weekNums'))}${sw('holidays', t('s.holidays'))}${sw('notify', t('s.notify'))}${sw('anim', t('s.anim'))}</section>
+    <section><h3>${t('s.data')}</h3><div class="data-btns"><button class="btn tonal rp" data-action="export">${t('export')}</button><button class="btn tonal rp" data-action="import">${t('import')}</button></div></section>
     <section><h3>${t('s.about')}</h3><div class="about"><div class="a-logo">${I.logo}</div>
       <div><b>${t('app.name')}</b> <small>${t('s.version')} 1.0.0</small>
       <p>${t('s.author')}: <span class="pill">minhtrong67</span></p><p>${t('s.assist')}: <span class="pill ai">Claude</span></p></div></div>
@@ -316,6 +346,7 @@ function fillSettings() {
 function applySetting(k, refill = true) {
   if (k === 'theme' || k === 'seed') applyTheme(settings);
   if (k === 'lang') { setLang(settings.lang); shell(); }
+  if (k === 'notify' && settings.notify) osNotify(t('app.name'), t('notifyOn'));
   if (k === 'anim') document.documentElement.dataset.anim = settings.anim ? 'on' : 'off';
   if (k === 'windowMode' && settings.windowMode === 'remember') captureSize(onSize);
   persist(); render();
@@ -324,7 +355,23 @@ function applySetting(k, refill = true) {
 
 /* ───────── reminders ───────── */
 const fired = new Set();
+const snoozes = [];
+async function osNotify(title, body) {
+  if (!settings.notify) return;
+  try {
+    let ok = await isPermissionGranted();
+    if (!ok) ok = (await requestPermission()) === 'granted';
+    if (ok) sendNotification({ title, body });
+  } catch { /* not running inside Tauri */ }
+}
+function remindToast(e) {
+  toast(`${t('reminder')}: ${e.title} (${ft(e.start)})`, t('snooze'), () => snoozes.push({ id: e.id, at: Date.now() + 300000 }), 12000);
+  osNotify(e.title, `${ft(e.start)}${e.loc ? ' · ' + e.loc : ''}`);
+}
 function checkReminders() {
+  for (let i = snoozes.length - 1; i >= 0; i--) {
+    if (snoozes[i].at <= Date.now()) { const e = events.find((x) => x.id === snoozes[i].id); snoozes.splice(i, 1); if (e) remindToast(e); }
+  }
   const now = new Date(), today = sod(now), nm = now.getHours() * 60 + now.getMinutes();
   for (const e of events) {
     if (e.allDay || e.remind < 0 || !occurs(e, today)) continue;
@@ -332,8 +379,7 @@ function checkReminders() {
     const st = mins(e.start);
     if (nm >= st - e.remind && nm <= st) {
       fired.add(key);
-      toast(`${t('reminder')}: ${e.title} (${e.start})`, null, null, 9000);
-      try { if ('Notification' in window && Notification.permission === 'granted') new Notification(e.title, { body: e.start }); } catch { /* ignore */ }
+      remindToast(e);
     }
   }
 }
@@ -342,8 +388,8 @@ function checkReminders() {
 function search(q) {
   const box = $('#results'); q = q.trim().toLowerCase();
   if (!q) { box.hidden = true; return; }
-  const hits = events.filter((e) => (e.title + ' ' + e.desc).toLowerCase().includes(q)).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
-  box.innerHTML = hits.length ? hits.map((e) => `<button class="res" data-action="edit" data-id="${e.id}" data-date="${e.date}" style="--c:${e.color}"><i></i><span><b>${esc(e.title)}</b><small>${fmt({ day: 'numeric', month: 'short', year: 'numeric' }, parse(e.date))}${e.allDay ? '' : ' · ' + e.start}</small></span></button>`).join('') : `<p class="muted">${t('noResults')}</p>`;
+  const hits = events.filter((e) => (e.title + ' ' + e.desc + ' ' + (e.loc || '')).toLowerCase().includes(q)).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
+  box.innerHTML = hits.length ? hits.map((e) => `<button class="res" data-action="edit" data-id="${e.id}" data-date="${e.date}" style="--c:${e.color}"><i></i><span><b>${esc(e.title)}</b><small>${fmt({ day: 'numeric', month: 'short', year: 'numeric' }, parse(e.date))}${e.allDay ? '' : ' · ' + ft(e.start)}</small></span></button>`).join('') : `<p class="muted">${t('noResults')}</p>`;
   box.hidden = false;
 }
 
@@ -373,6 +419,9 @@ document.addEventListener('click', (ev) => {
     }
     case 'edit': $('#results').hidden = true; openEvent(id, date); break;
     case 'del': deleteEvent(id); break;
+    case 'dup': dupEvent(id); break;
+    case 'export': exportEvents(); break;
+    case 'import': importEvents(); break;
     case 'set': settings[k] = k === 'weekStart' ? Number(v) : v; applySetting(k); break;
   }
   // ripple
@@ -410,6 +459,89 @@ document.addEventListener('keydown', (ev) => {
 });
 document.addEventListener('contextmenu', (ev) => { if (!import.meta.env.DEV) ev.preventDefault(); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+
+/* ───────── duplicate / move / import / export ───────── */
+function dupEvent(id) {
+  const src = events.find((e) => e.id === id); if (!src) return;
+  events.push({ ...src, id: newId() });
+  saveEvents(); fired.clear(); $('#evDlg').close(); render(); toast(t('duplicated'));
+}
+
+function moveEvent(id, from, to, startMin) {
+  const e = events.find((x) => x.id === id); if (!e) return;
+  const before = { date: e.date, start: e.start, end: e.end };
+  const delta = Math.round((parse(to) - parse(from)) / 864e5);
+  if (!delta && startMin == null) return;
+  e.date = ymd(addDays(parse(e.date), delta));
+  if (startMin != null && !e.allDay) {
+    const dur = e.end ? mins(e.end) - mins(e.start) : 0;
+    const s = Math.max(0, Math.min(startMin, 23 * 60 + 45)), en = Math.min(s + Math.max(dur, 0), 23 * 60 + 59);
+    const tm = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+    e.start = tm(s); e.end = e.end ? tm(en) : '';
+  }
+  saveEvents(); fired.clear(); render();
+  toast(t('moved'), t('undo'), () => { Object.assign(e, before); saveEvents(); render(); });
+}
+
+async function exportEvents() {
+  try {
+    const path = await save({ defaultPath: `material-calendar-${ymd(new Date())}.json`, filters: [{ name: 'JSON', extensions: ['json'] }] });
+    if (!path) return;
+    await writeTextFile(path, JSON.stringify({ app: 'material-calendar', version: 1, events }, null, 2));
+    toast(t('exported').replace('{n}', events.length));
+  } catch (e) { console.warn(e); toast(t('importBad')); }
+}
+
+async function importEvents() {
+  try {
+    const path = await openDlg({ multiple: false, filters: [{ name: 'JSON', extensions: ['json'] }] });
+    if (!path) return;
+    const data = JSON.parse(await readTextFile(path));
+    const list = Array.isArray(data) ? data : data.events;
+    if (!Array.isArray(list)) throw new Error('bad file');
+    const ids = new Set(events.map((e) => e.id)); let n = 0;
+    const hm = (v) => (/^\d\d:\d\d$/.test(v) ? v : '');
+    for (const r of list) {
+      if (!r || typeof r.title !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(r.date || '')) continue;
+      events.push({
+        id: r.id && !ids.has(r.id) ? r.id : newId(), title: r.title.slice(0, 120), loc: String(r.loc || ''), desc: String(r.desc || ''),
+        date: r.date, allDay: !!r.allDay, start: r.allDay ? '' : hm(r.start) || '09:00', end: r.allDay ? '' : hm(r.end),
+        color: COLORS.includes(r.color) ? r.color : COLORS[0], repeat: ['none', 'daily', 'weekly', 'monthly', 'yearly'].includes(r.repeat) ? r.repeat : 'none',
+        remind: [-1, 0, 5, 15, 30, 60].includes(r.remind) ? r.remind : -1,
+      });
+      n++;
+    }
+    saveEvents(); fired.clear(); render(); toast(t('imported').replace('{n}', n));
+  } catch (e) { console.warn(e); toast(t('importBad')); }
+}
+
+/* drag & drop: move events between days (and time slots in week/day view) */
+let drag = null;
+const dropTarget = (el) => el.closest?.('.cell, .ad, .col');
+document.addEventListener('dragstart', (ev) => {
+  const el = ev.target.closest?.('[draggable=true][data-id]'); if (!el) return;
+  drag = { id: el.dataset.id, date: el.dataset.date, timed: el.classList.contains('ev') };
+  ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', drag.id);
+  requestAnimationFrame(() => el.classList.add('dragging'));
+});
+document.addEventListener('dragover', (ev) => {
+  if (!drag) return;
+  const tg = dropTarget(ev.target); if (!tg || (tg.classList.contains('col') && !drag.timed)) return;
+  ev.preventDefault(); ev.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.drop').forEach((x) => x !== tg && x.classList.remove('drop'));
+  tg.classList.add('drop');
+});
+document.addEventListener('drop', (ev) => {
+  if (!drag) return;
+  const tg = dropTarget(ev.target); if (!tg) return;
+  let startMin = null;
+  if (tg.classList.contains('col')) {
+    if (!drag.timed) return;
+    startMin = Math.round(((ev.clientY - tg.getBoundingClientRect().top) / HOUR) * 4) * 15;
+  }
+  ev.preventDefault(); moveEvent(drag.id, drag.date, tg.dataset.date, startMin);
+});
+document.addEventListener('dragend', () => { drag = null; document.querySelectorAll('.drop,.dragging').forEach((x) => x.classList.remove('drop', 'dragging')); });
 
 /* ───────── boot ───────── */
 setLang(settings.lang);

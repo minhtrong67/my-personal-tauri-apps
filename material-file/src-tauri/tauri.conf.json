@@ -23,6 +23,7 @@
     ],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: http://asset.localhost; font-src 'self' data:",
+      "dangerousDisableAssetCspModification": ["style-src"],
       "assetProtocol": {
         "enable": true,
         "scope": ["**"]
@@ -47,6 +48,8 @@
     "windows": {
       "nsis": {
         "installerIcon": "icons/installer/installer.ico",
+        "uninstallerIcon": "icons/installer/uninstall.ico",
+        "uninstallerHeaderImage": "icons/installer/nsis-header-uninstall.bmp",
         "headerImage": "icons/installer/nsis-header.bmp",
         "sidebarImage": "icons/installer/nsis-sidebar.bmp",
         "installMode": "currentUser"

@@ -161,6 +161,12 @@ header = Image.new("RGB", (150, 57), SURFACE)
 header.paste(app.resize((44, 44), Image.LANCZOS), (98, 6), app.resize((44, 44), Image.LANCZOS))
 header.save(INSTALLER / "nsis-header.bmp")
 
+# NSIS uninstaller header (150x57) uses the uninstall variant of the icon
+header_un = Image.new("RGB", (150, 57), SURFACE)
+un_logo = render("uninstall").resize((44, 44), Image.LANCZOS)
+header_un.paste(un_logo, (98, 6), un_logo)
+header_un.save(INSTALLER / "nsis-header-uninstall.bmp")
+
 side = vertical_gradient((164, 314), PRIMARY_CONTAINER, PRIMARY_FIXED_DIM)
 sd = ImageDraw.Draw(side)
 sd.ellipse((-60, 200, 120, 380), fill=PRIMARY_FIXED_DIM)

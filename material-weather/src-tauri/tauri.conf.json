@@ -1,0 +1,63 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Material Weather",
+  "version": "1.0.0",
+  "identifier": "com.minhtrong67.materialweather",
+  "build": {
+    "beforeDevCommand": "npm run vite:dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run vite:build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Material Weather",
+        "width": 1120,
+        "height": 780,
+        "minWidth": 820,
+        "minHeight": 600,
+        "center": true,
+        "resizable": true,
+        "decorations": true,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://api.open-meteo.com https://geocoding-api.open-meteo.com https://air-quality-api.open-meteo.com https://ipwho.is https://get.geojs.io https://ipapi.co https://api.bigdatacloud.net",
+      "devCsp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self' 'unsafe-inline'; connect-src 'self' ws://127.0.0.1:1420 ipc: http://ipc.localhost https://api.open-meteo.com https://geocoding-api.open-meteo.com https://air-quality-api.open-meteo.com https://ipwho.is https://get.geojs.io https://ipapi.co https://api.bigdatacloud.net"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "deb", "appimage", "app", "dmg"],
+    "publisher": "minhtrong67",
+    "copyright": "Copyright © 2026 minhtrong67",
+    "category": "Utility",
+    "shortDescription": "Material Weather - beautiful Material Design 3 weather app",
+    "longDescription": "Material Weather is a fast, beautiful desktop weather app with live forecasts, hourly and 7-day outlooks, air quality, themes and two languages (English / Tiếng Việt). Created by minhtrong67 with the support of Claude.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "icons/uninstall.ico": "uninstall.ico"
+    },
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/setup.ico",
+        "headerImage": "installer/header.bmp",
+        "sidebarImage": "installer/sidebar.bmp",
+        "installerHooks": "installer/hooks.nsh",
+        "installMode": "currentUser",
+        "languages": ["English", "Vietnamese"],
+        "displayLanguageSelector": true
+      }
+    }
+  }
+}

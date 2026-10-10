@@ -52,6 +52,9 @@
     <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
     <symbol id="i-filter" viewBox="0 0 24 24"><path d="M22 3H2l8 9.5V19l4 2v-8.5z"/></symbol>
     <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+    <symbol id="i-resize" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></symbol>
+    <symbol id="i-maximize" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></symbol>
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.6 3.9A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2z"/></symbol>
     <symbol id="i-archive" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></symbol>
     <symbol id="i-terminal" viewBox="0 0 24 24"><path d="M4 17l6-6-6-6M12 19h8"/></symbol>
@@ -154,8 +157,10 @@
       <span class="grow"></span>
       <button class="icon-btn small" id="st-pane" data-i18n-title="view.detailsPane"><svg class="icon"><use href="#i-panel-right"/></svg></button>
       <span class="st-sep"></span>
-      <button class="icon-btn small" id="st-details" data-i18n-title="view.details"><svg class="icon"><use href="#i-list"/></svg></button>
-      <button class="icon-btn small" id="st-grid" data-i18n-title="view.grid"><svg class="icon"><use href="#i-grid"/></svg></button>
+      <div class="st-views">
+        <button class="icon-btn small" id="st-details" data-i18n-title="view.details"><svg class="icon"><use href="#i-list"/></svg></button>
+        <button class="icon-btn small" id="st-grid" data-i18n-title="view.grid"><svg class="icon"><use href="#i-grid"/></svg></button>
+      </div>
     </footer>
   </div>
 
@@ -163,54 +168,92 @@
   <div id="menu-sub" class="menu-pop" role="menu" hidden></div>
   <div id="snackbar" class="snackbar" role="status"></div>
 
+  <!-- file operation progress (copy / move) -->
+  <div class="opcard" id="opcard" hidden>
+    <div class="op-title" id="op-title"></div>
+    <div class="op-name" id="op-name"></div>
+    <div class="op-bar"><i id="op-fill"></i></div>
+    <div class="op-row"><span id="op-pct"></span><button class="btn-text" id="op-cancel" data-i18n="common.cancel"></button></div>
+  </div>
+
   <!-- Settings -->
-  <dialog id="dlg-settings" class="dlg dlg-wide">
-    <h2 data-i18n="settings.title"></h2>
+  <dialog id="dlg-settings" class="dlg dlg-settings">
+    <div class="st-shell">
+      <nav class="st-nav" id="st-nav">
+        <h2 data-i18n="settings.title"></h2>
+        <button class="st-tab active" data-panel="appearance"><svg class="icon"><use href="#i-sun"/></svg><span data-i18n="settings.appearance"></span></button>
+        <button class="st-tab" data-panel="language"><svg class="icon"><use href="#i-globe"/></svg><span data-i18n="settings.language"></span></button>
+        <button class="st-tab" data-panel="files"><svg class="icon"><use href="#i-folder"/></svg><span data-i18n="settings.files"></span></button>
+        <button class="st-tab" data-panel="window"><svg class="icon"><use href="#i-panel-left"/></svg><span data-i18n="settings.windowLayout"></span></button>
+        <span class="grow"></span>
+        <button class="btn-text" id="btn-reset" data-i18n="settings.reset"></button>
+      </nav>
+      <div class="st-body">
+        <div class="st-panels">
+          <section class="st-panel" data-panel="appearance">
+            <div class="sgroup">
+              <div class="glabel" data-i18n="settings.theme"></div>
+              <div class="gdesc" data-i18n="settings.d.theme"></div>
+              <div class="segmented" id="seg-theme">
+                <label><input type="radio" name="theme" value="light"><span><svg class="icon"><use href="#i-sun"/></svg><b data-i18n="settings.light"></b></span></label>
+                <label><input type="radio" name="theme" value="dark"><span><svg class="icon"><use href="#i-moon"/></svg><b data-i18n="settings.dark"></b></span></label>
+                <label><input type="radio" name="theme" value="system"><span><svg class="icon"><use href="#i-system"/></svg><b data-i18n="settings.system"></b></span></label>
+              </div>
+            </div>
+            <div class="sgroup">
+              <div class="glabel" data-i18n="settings.color"></div>
+              <div class="gdesc" data-i18n="settings.d.color"></div>
+              <div class="swatches" id="swatches"></div>
+              <label class="custom-color">
+                <input type="color" id="seed-input">
+                <span data-i18n="settings.custom"></span>
+              </label>
+              <div class="palette" aria-hidden="true"><i class="p1"></i><i class="p2"></i><i class="p3"></i><i class="p4"></i><i class="p5"></i></div>
+            </div>
+          </section>
 
-    <h3 data-i18n="settings.appearance"></h3>
-    <div class="setting">
-      <span class="label" data-i18n="settings.theme"></span>
-      <div class="segmented" id="seg-theme">
-        <label><input type="radio" name="theme" value="light"><span><svg class="icon"><use href="#i-sun"/></svg><b data-i18n="settings.light"></b></span></label>
-        <label><input type="radio" name="theme" value="dark"><span><svg class="icon"><use href="#i-moon"/></svg><b data-i18n="settings.dark"></b></span></label>
-        <label><input type="radio" name="theme" value="system"><span><svg class="icon"><use href="#i-system"/></svg><b data-i18n="settings.system"></b></span></label>
+          <section class="st-panel" data-panel="language" hidden>
+            <div class="sgroup">
+              <div class="glabel" data-i18n="settings.language"></div>
+              <div class="gdesc" data-i18n="settings.d.language"></div>
+              <div class="segmented" id="seg-lang">
+                <label><input type="radio" name="lang" value="en"><span><b>English</b></span></label>
+                <label><input type="radio" name="lang" value="vi"><span><b>Tiếng Việt</b></span></label>
+              </div>
+            </div>
+          </section>
+
+          <section class="st-panel" data-panel="files" hidden>
+            <div class="sgroup">
+              <div class="glabel" data-i18n="settings.defaultView"></div>
+              <div class="gdesc" data-i18n="settings.d.view"></div>
+              <div class="segmented" id="seg-view">
+                <label><input type="radio" name="view" value="details"><span><svg class="icon"><use href="#i-list"/></svg><b data-i18n="view.details"></b></span></label>
+                <label><input type="radio" name="view" value="grid"><span><svg class="icon"><use href="#i-grid"/></svg><b data-i18n="view.grid"></b></span></label>
+              </div>
+            </div>
+            <label class="srow"><span class="stxt"><b data-i18n="settings.showHidden"></b><small data-i18n="settings.d.hidden"></small></span><input type="checkbox" class="switch" id="set-hidden" role="switch"></label>
+            <label class="srow"><span class="stxt"><b data-i18n="settings.showExt"></b><small data-i18n="settings.d.ext"></small></span><input type="checkbox" class="switch" id="set-ext" role="switch"></label>
+            <label class="srow"><span class="stxt"><b data-i18n="view.checks"></b><small data-i18n="settings.d.checks"></small></span><input type="checkbox" class="switch" id="set-checks" role="switch"></label>
+            <label class="srow"><span class="stxt"><b data-i18n="settings.confirmDelete"></b><small data-i18n="settings.d.confirm"></small></span><input type="checkbox" class="switch" id="set-confirm" role="switch"></label>
+          </section>
+
+          <section class="st-panel" data-panel="window" hidden>
+            <div class="sgroup">
+            <div class="glabel" data-i18n="settings.windowOnStart"></div>
+            <div class="gdesc" data-i18n="settings.d.windowStart"></div>
+            <div class="choice" id="seg-window">
+              <label class="choice-item"><input type="radio" name="winmode" value="remember"><span class="ci"><svg class="icon"><use href="#i-resize"/></svg><span class="ct"><b data-i18n="settings.winRemember"></b><small data-i18n="settings.d.winRemember"></small></span><svg class="icon tick"><use href="#i-check"/></svg></span></label>
+              <label class="choice-item"><input type="radio" name="winmode" value="maximized"><span class="ci"><svg class="icon"><use href="#i-maximize"/></svg><span class="ct"><b data-i18n="settings.winMax"></b><small data-i18n="settings.d.winMax"></small></span><svg class="icon tick"><use href="#i-check"/></svg></span></label>
+            </div>
+    </div>
+            <label class="srow"><span class="stxt"><b data-i18n="view.nav"></b><small data-i18n="settings.d.nav"></small></span><input type="checkbox" class="switch" id="set-nav" role="switch"></label>
+            <label class="srow"><span class="stxt"><b data-i18n="settings.autoTree"></b><small data-i18n="settings.d.autoTree"></small></span><input type="checkbox" class="switch" id="set-autotree" role="switch"></label>
+            <label class="srow"><span class="stxt"><b data-i18n="view.detailsPane"></b><small data-i18n="settings.d.details"></small></span><input type="checkbox" class="switch" id="set-details" role="switch"></label>
+          </section>
+        </div>
+        <div class="st-foot"><button class="btn-filled" id="settings-close" data-i18n="common.close"></button></div>
       </div>
-    </div>
-    <div class="setting">
-      <span class="label" data-i18n="settings.color"></span>
-      <div class="swatches" id="swatches"></div>
-      <label class="custom-color">
-        <input type="color" id="seed-input">
-        <span data-i18n="settings.custom"></span>
-      </label>
-    </div>
-    <div class="setting">
-      <span class="label" data-i18n="settings.language"></span>
-      <div class="segmented" id="seg-lang">
-        <label><input type="radio" name="lang" value="en"><span><b>English</b></span></label>
-        <label><input type="radio" name="lang" value="vi"><span><b>Tiếng Việt</b></span></label>
-      </div>
-    </div>
-
-    <h3 data-i18n="settings.general"></h3>
-    <div class="setting">
-      <span class="label" data-i18n="settings.defaultView"></span>
-      <div class="segmented" id="seg-view">
-        <label><input type="radio" name="view" value="details"><span><svg class="icon"><use href="#i-list"/></svg><b data-i18n="view.details"></b></span></label>
-        <label><input type="radio" name="view" value="grid"><span><svg class="icon"><use href="#i-grid"/></svg><b data-i18n="view.grid"></b></span></label>
-      </div>
-    </div>
-    <label class="setting inline switch-row"><span class="label" data-i18n="settings.showExt"></span><input type="checkbox" class="switch" id="set-ext" role="switch"></label>
-    <label class="setting inline switch-row"><span class="label" data-i18n="settings.showHidden"></span><input type="checkbox" class="switch" id="set-hidden" role="switch"></label>
-    <label class="setting inline switch-row"><span class="label" data-i18n="settings.confirmDelete"></span><input type="checkbox" class="switch" id="set-confirm" role="switch"></label>
-
-    <h3 data-i18n="settings.window"></h3>
-    <label class="setting inline switch-row"><span class="label" data-i18n="settings.fullscreen"></span><input type="checkbox" class="switch" id="set-fullscreen" role="switch"></label>
-
-    <div class="dlg-actions">
-      <button class="btn-text" id="btn-reset" data-i18n="settings.reset"></button>
-      <span class="grow"></span>
-      <button class="btn-filled" id="settings-close" data-i18n="common.close"></button>
     </div>
   </dialog>
 

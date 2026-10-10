@@ -2,7 +2,9 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Permissions for the Material Note main window",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "core:window:allow-show",
@@ -12,6 +14,10 @@
     "core:window:allow-is-fullscreen",
     "core:window:allow-close",
     "core:window:allow-destroy",
-    "dialog:default"
+    "dialog:default",
+    "core:window:allow-set-size",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-center"
   ]
 }

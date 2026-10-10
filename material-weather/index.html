@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Material Weather</title>
+  </head>
+  <body>
+    <div id="app" class="app">
+      <div class="nav-scrim" id="navScrim"></div>
+      <aside class="drawer" id="drawer">
+        <div class="drawer-head">
+          <img src="/logo.svg" class="logo" width="44" height="44" alt="" />
+          <div><div class="brand" id="brandName">Material Weather</div><div class="brand-sub">Open-Meteo</div></div>
+        </div>
+        <div class="drawer-label" id="locLabel"></div>
+        <nav class="loc-list" id="locList"></nav>
+        <div class="drawer-foot">
+          <button class="btn tonal ripple block" id="btnDetect"></button>
+          <div class="credit" id="credit"></div>
+        </div>
+      </aside>
+      <main class="main">
+        <header class="topbar">
+          <button class="icon-btn ripple menu-btn" id="btnMenu"></button>
+          <div class="searchbar" id="searchbar">
+            <span class="s-ico" id="searchIco"></span>
+            <input id="searchInput" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" />
+            <button class="icon-btn small ripple" id="searchClear" hidden></button>
+            <div class="search-pop" id="searchPop" role="listbox" hidden></div>
+          </div>
+          <div class="top-actions">
+            <button class="icon-btn ripple" id="btnPin"></button>
+            <button class="icon-btn ripple" id="btnRefresh"></button>
+            <button class="icon-btn ripple" id="btnSettings"></button>
+          </div>
+        </header>
+        <div class="content" id="content">
+          <div class="content-in">
+            <section class="hero" id="hero" hidden><canvas id="fx"></canvas><div class="hero-body" id="heroBody"></div></section>
+            <div id="sections"></div>
+            <div id="foot" class="foot"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <div id="layer"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -214,3 +214,18 @@ html[data-theme=dark] .toast .btn.text{color:var(--primary)}
 @media (max-width:980px){.seg button{padding:0 10px}#title{font-size:17px}}
 html[data-anim=off] *,html[data-anim=off] *::before,html[data-anim=off] *::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+
+/* v1.1 additions */
+#toasts{inset:auto;left:50%;bottom:24px;margin:0;padding:0;border:0;background:none;overflow:visible;width:max-content;max-width:calc(100vw - 32px)}
+.chip[draggable=true],.ev[draggable=true]{cursor:grab}
+.dragging{opacity:.45}
+.cell.drop,.ad.drop,.col.drop{outline:2px dashed var(--primary);outline-offset:-2px;background-color:color-mix(in srgb,var(--primary) 10%,transparent)}
+.data-btns{display:flex;gap:8px;flex-wrap:wrap;padding:4px 0}
+
+/* v1.2 additions */
+.cell{position:relative}
+.cell .lunar,.cell .wk{position:absolute;top:7px;font-size:10px;line-height:1;color:var(--on-surface-variant);pointer-events:none}
+.cell .lunar{right:7px}.cell .wk{left:7px;opacity:.75}
+.cell.dim .lunar,.cell.dim .wk{opacity:.5}
+.lunar-s{display:block;font-style:normal;font-size:10px;color:var(--on-surface-variant);margin-top:-2px}
+.wkn{display:grid;place-items:center;font-size:11px;color:var(--on-surface-variant)}

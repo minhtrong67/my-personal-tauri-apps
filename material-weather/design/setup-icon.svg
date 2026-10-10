@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6EA8FF"/><stop offset="1" stop-color="#0B57D0"/></linearGradient>
+  <radialGradient id="sun" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#FFE082"/><stop offset="1" stop-color="#FFA000"/></radialGradient>
+  <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFE082" stop-opacity=".55"/><stop offset="1" stop-color="#FFE082" stop-opacity="0"/></radialGradient>
+  <linearGradient id="cl" gradientUnits="userSpaceOnUse" x1="0" y1="366" x2="0" y2="762"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#D6E4FA"/></linearGradient>
+</defs><rect x="64" y="64" width="896" height="896" rx="208" fill="url(#bg)"/>
+<circle cx="650" cy="372" r="300" fill="url(#glow)"/>
+<circle cx="650" cy="372" r="172" fill="url(#sun)"/>
+<g fill="#0B3D91" opacity=".18" transform="translate(-34 18)">
+  <circle cx="392" cy="630" r="130"/><circle cx="556" cy="548" r="182"/><circle cx="732" cy="640" r="122"/><rect x="392" y="630" width="340" height="132"/>
+</g>
+<g fill="url(#cl)" transform="translate(-34 0)">
+  <circle cx="392" cy="630" r="130"/><circle cx="556" cy="548" r="182"/><circle cx="732" cy="640" r="122"/><rect x="392" y="630" width="340" height="132"/>
+</g><circle cx="792" cy="792" r="170" fill="#FFFFFF"/><circle cx="792" cy="792" r="140" fill="#1E8E3E"/>
+<path d="M792 706v120M740 784l52 56 52-56" fill="none" stroke="#fff" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/></svg>

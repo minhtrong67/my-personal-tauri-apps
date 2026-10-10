@@ -19,7 +19,7 @@
   const SESSION_KEY = 'material-note.session';
   const DEFAULTS = {
     theme: 'system', seed: '#6750A4', lang: null, font: 'system', fontSize: 16,
-    wrap: true, tabLayout: 'horizontal', statusBar: true, spellcheck: false, restore: true, zoom: 100
+    wrap: true, tabLayout: 'horizontal', statusBar: true, spellcheck: false, restore: true, windowMode: 'remember', winState: null, zoom: 100
   };
   const FONTS = {
     system: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
@@ -318,15 +318,19 @@
   function updateStatus() {
     if (statusQueued) return;
     statusQueued = true;
-    requestAnimationFrame(() => {
+    const cur = active();
+    const later = cur && cur.ta.value.length > 300000 ? (fn) => setTimeout(fn, 120) : requestAnimationFrame; // coalesce on huge files
+    later(() => {
       statusQueued = false;
       const tab = active();
       if (!tab) return;
       const ta = tab.ta;
       const pos = ta.selectionStart;
-      const before = ta.value.slice(0, pos);
-      const ln = (before.match(/\n/g) || []).length + 1;
-      const col = pos - (before.lastIndexOf('\n') + 1) + 1;
+      const v = ta.value;
+      let ln = 1;
+      let lineStart = 0;
+      for (let k = v.indexOf('\n'); k !== -1 && k < pos; k = v.indexOf('\n', k + 1)) { ln++; lineStart = k + 1; }
+      const col = pos - lineStart + 1;
       $('#st-pos').textContent = `${t('status.ln')} ${ln}, ${t('status.col')} ${col}`;
       const selLen = ta.selectionEnd - ta.selectionStart;
       $('#st-sel').textContent = selLen ? '(' + t('status.selected', { n: selLen.toLocaleString() }) + ')' : '';
@@ -756,6 +760,7 @@
     $('#set-status').checked = settings.statusBar;
     $('#set-spell').checked = settings.spellcheck;
     $('#set-restore').checked = settings.restore;
+    document.querySelectorAll('#seg-window input').forEach((i) => { i.checked = i.value === settings.windowMode; });
     renderSwatches();
   }
 
@@ -768,6 +773,7 @@
   function applyLanguage() {
     I18n.setLang(settings.lang);
     I18n.apply();
+    hintShortcuts();
     renderTabs();
     updateTitle();
     updateStatus();
@@ -927,14 +933,73 @@
     });
   }
 
+  /* ------------------------------------------------------- window size options */
+  let saveWindowState = async () => {};
+  async function applyWindowPrefs() {
+    if (!win) return;
+    try {
+      if (settings.windowMode === 'maximized') { await win.maximize(); return; }
+      const s = settings.winState;
+      const PS = TAURI.dpi && TAURI.dpi.PhysicalSize;
+      if (s && PS && s.w >= 400 && s.h >= 300) {
+        await win.setSize(new PS(s.w, s.h));
+        await win.center();
+      }
+      if (s && s.maximized) await win.maximize();
+    } catch { /* keep the default window */ }
+  }
+  function trackWindow() {
+    if (!win || !win.onResized) return;
+    let timer = 0;
+    saveWindowState = async () => {
+      if (settings.windowMode !== 'remember') return;
+      try {
+        if (await win.isFullscreen()) return;
+        const prev = settings.winState || {};
+        if (await win.isMaximized()) {
+          settings.winState = Object.assign({}, prev, { maximized: true });
+        } else {
+          const sz = await win.innerSize();
+          settings.winState = { w: sz.width, h: sz.height, maximized: false };
+        }
+        saveSettings();
+      } catch { /* ignore */ }
+    };
+    win.onResized(() => { clearTimeout(timer); timer = setTimeout(saveWindowState, 350); });
+  }
+  const WINDOW_MODE_HANDLER = () => document.querySelectorAll('#seg-window input').forEach((i) => i.addEventListener('change', () => {
+    settings.windowMode = i.value;
+    saveSettings();
+    if (i.value === 'maximized') { if (win && win.maximize) Promise.resolve(win.maximize()).catch(() => {}); } else saveWindowState();
+  }));
+  WINDOW_MODE_HANDLER();
+
+  /* tooltips with keyboard shortcuts */
+  const HINTS = { 'btn-find': 'Ctrl+F', 'btn-newtab': 'Ctrl+N', 'btn-settings': 'Ctrl+,' };
+  function hintShortcuts() {
+    Object.keys(HINTS).forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && el.dataset.i18nTitle) {
+        const v = t(el.dataset.i18nTitle) + ' (' + HINTS[id] + ')';
+        el.title = v;
+        el.setAttribute('aria-label', v);
+      }
+    });
+  }
+
   /* --------------------------------------------------------------------- init */
   async function init() {
     I18n.setLang(settings.lang);
     I18n.apply();
+    hintShortcuts();
     applyTheme();
     applyTabLayout();
     syncSettingsUi();
     applyEditorStyle();
+
+    // window options: remember the last size, or always open maximized
+    await applyWindowPrefs();
+    trackWindow();
 
     // Render an editor right away; session restore happens in the background
     const first = createTab();

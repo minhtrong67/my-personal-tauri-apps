@@ -1,13 +1,13 @@
 [package]
-name = "calendar-app"
+name = "material-calendar"
 version = "1.0.0"
-description = "A Material Design 3 desktop calendar built with Tauri 2"
+description = "Material Calendar — a Material Design 3 desktop calendar built with Tauri 2"
 authors = ["minhtrong67"]
 edition = "2021"
 license = "MIT"
 
 [lib]
-name = "calendar_app_lib"
+name = "material_calendar_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -15,3 +15,6 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-notification = "2"
